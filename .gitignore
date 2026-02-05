@@ -1,0 +1,14 @@
+# Ignorar ambiente virtual e caches
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# SEGURANÇA: Ignorar chaves e senhas
+.env
+
+# Ignorar arquivos de mídia gerados (pesados)
+media/
+
+# Sistema
+.DS_Store

@@ -1,0 +1,38 @@
+{
+  "cliente_varejo": {
+    "name": "EcoShoes",
+    "industry": "Moda Sustentável",
+    "strategy_config": {
+      "mission": "Democratizar a moda ecológica.",
+      "tone_voice": "Inspirador, Jovem, Ativista, mas acessível.",
+      "target_audience": "Gen Z e Millennials preocupados com o clima."
+    },
+    "visual_config": {
+      "style": "Fotografia Natural, Luz Solar, Texturas Orgânicas.",
+      "palette": "Terrosos (Marrom, Verde Musgo, Bege) com toques de Laranja.",
+      "avoid": ["Plástico brilhante", "Ambientes artificiais", "Cores neon"]
+    },
+    "copy_rules": {
+      "forbidden_words": ["barato", "promoção louca", "queima de estoque"],
+      "mandatory_hashtags": ["#EcoShoes", "#ModaConsciente"]
+    }
+  },
+  "cliente_moda": {
+    "name": "FashionX",
+    "industry": "Alta Costura",
+    "strategy_config": {
+      "mission": "Exclusividade e poder.",
+      "tone_voice": "Sofisticado, Minimalista, Distante.",
+      "target_audience": "Classe A, amantes de luxo."
+    },
+    "visual_config": {
+      "style": "Editorial de Revista, Alto Contraste, P&B.",
+      "palette": "Preto, Branco, Dourado e Vermelho Sangue.",
+      "avoid": ["Sorrisos excessivos", "Cores pastéis", "Desleixo"]
+    },
+    "copy_rules": {
+      "forbidden_words": ["precinho", "corre", "galera"],
+      "mandatory_hashtags": ["#Luxury", "#FashionX"]
+    }
+  }
+}
