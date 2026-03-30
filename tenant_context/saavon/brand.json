@@ -1,0 +1,57 @@
+{
+  "name": "Ssavon",
+  "slug": "ssavon",
+  "industry": "Fábrica de velas e aromatizantes",
+  "language": "pt-BR",
+
+  "brand_promise": "Aromas que transformam ambientes em experiências.",
+  "positioning": "Marca premium de velas e aromatizantes para bem-estar, casa e presente.",
+  "personality": ["premium", "sensorial", "acolhedora", "minimalista"],
+
+  "voice": {
+    "tone": ["elegante", "calmo", "objetivo", "sensorial"],
+    "do": [
+      "descrever sensações (aconchego, presença, atmosfera)",
+      "usar linguagem limpa e premium",
+      "destacar detalhes de fabricação e qualidade",
+      "conectar aroma com momentos (rotina, presente, casa)"
+    ],
+    "dont": [
+      "prometer efeitos terapêuticos",
+      "linguagem infantil",
+      "exagerar em emojis",
+      "claim absoluto"
+    ]
+  },
+
+  "audiences": [
+    {
+      "name": "Consumidor final premium",
+      "pains": ["casa sem identidade", "estresse da rotina", "presentes sem personalidade"],
+      "desires": ["aconchego", "ambiente cheirosinho", "presente marcante", "autocuidado"]
+    },
+    {
+      "name": "Empresas e brindes",
+      "pains": ["brinde genérico", "pouca percepção de valor"],
+      "desires": ["presente premium", "personalização", "memória de marca"]
+    }
+  ],
+
+  "products": [
+    {
+      "name": "Velas aromáticas",
+      "benefits": ["atmosfera aconchegante", "aroma marcante", "decoração minimalista", "presente premium"],
+      "proof": ["produção própria", "curadoria de fragrâncias", "acabamento premium"]
+    },
+    {
+      "name": "Difusores / aromatizantes",
+      "benefits": ["perfume contínuo no ambiente", "sensação de casa cuidada", "identidade olfativa"],
+      "proof": ["fragrâncias autorais", "alta fixação (sem promessa absoluta)"]
+    }
+  ],
+
+  "keywords": {
+    "must_use": ["aconchego", "atmosfera", "fragrância", "ritual", "presente"],
+    "avoid": ["cura", "milagre", "garantido"]
+  }
+}

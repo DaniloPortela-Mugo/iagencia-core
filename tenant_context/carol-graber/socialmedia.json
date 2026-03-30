@@ -1,0 +1,19 @@
+{
+  "platform_focus": ["Instagram", "WhatsApp","Tiktok", "Youtube"],
+  "posting_frequency": "5x por semana",
+ "hashtags": ["#numerologia", "#carolgraber", "#mapainfantil", "#sinastria", "#maternidadeconsciente"],
+  "call_to_actions": [
+    "Agende sua leitura de Mapa pelo link na Bio",
+    "Comenta aqui qual o seu número de destino",
+    "Compartilha com aquela amiga que precisa de clareza hoje"
+  ],
+  "forbidden_words": ["sorte", "previsão barata", "místico", "esotérico" ],
+
+  
+  "content_pillars": [
+    { "category": "Educativo", "weight": "40%", "topics": ["Significado dos Números", "Ano Pessoal", "Ciclos"] },
+    { "category": "Maternidade/Relacionamentos", "weight": "30%", "topics": ["Mapa Infantil", "Sinastria Amorosa", "Conexão Familiar"] },
+    { "category": "Inspiração/Venda", "weight": "20%", "topics": ["Leitura de Mapa", "Transição de Carreira"] },
+    { "category": "Conexão", "weight": "10%", "topics": ["Bastidores", "Estilo de Vida Consciente"] }
+  ]
+}

@@ -1,14 +1,47 @@
-# Ignorar ambiente virtual e caches
-.venv/
-venv/
+# env
+.env
+.env.*
+!.env.example
+
+# python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
 
-# SEGURANÇA: Ignorar chaves e senhas
-.env
+# virtualenv
+venv/
+.venv/
 
-# Ignorar arquivos de mídia gerados (pesados)
-media/
+# node
+node_modules/
+dist/
+build/
+.next/
+out/
 
-# Sistema
+# logs
+*.log
+logs/
+
+# cache
+.cache/
+.pytest_cache/
+coverage/
+
+# system
 .DS_Store
+Thumbs.db
+
+# editor
+.vscode/
+.idea/
+
+# secrets
+*.pem
+*.key
+*.crt
+credentials.json
+secrets.json

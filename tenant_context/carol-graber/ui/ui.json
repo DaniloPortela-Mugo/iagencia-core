@@ -1,0 +1,13 @@
+{
+  "primary_color": "#D4AF37", 
+  "secondary_color": "#FDF5E6",
+  "accent_color": "#E07A5F",
+  "font_family": "Montserrat, sans-serif",
+  "border_radius": "12px",
+  "theme": "dark",
+  "status_colors": {
+    "todo": "#A8A29E",
+    "doing": "#D4AF37",
+    "done": "#10B981"
+  }
+}

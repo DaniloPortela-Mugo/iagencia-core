@@ -1,0 +1,12 @@
+// rules/forbidden.txt
+barato
+promoção
+postzinho
+agência de marketing digital
+dicas rápidas
+hackzinho
+milagre
+fazer dancinha (em contexto pejorativo de estratégia)
+gasto (substituir por investimento)
+fornecedor (substituir por parceiro/sócio estratégico)
+frases motivacionais genéricas

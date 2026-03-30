@@ -1,0 +1,13 @@
+{
+  "primary_color": "#6D28D9", 
+  "secondary_color": "#000000",
+  "accent_color": "#FFFFFF",
+  "font_family": "Inter, system-ui, sans-serif",
+  "border_radius": "8px",
+  "theme": "dark",
+  "status_colors": {
+    "todo": "#3F3F46",
+    "doing": "#7C3AED",
+    "done": "#059669"
+  }
+}

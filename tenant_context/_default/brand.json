@@ -1,0 +1,38 @@
+{
+  "name": "Default",
+  "slug": "_default",
+  "industry": "Geral",
+  "language": "pt-BR",
+
+  "brand_promise": "Comunicação clara, consistente e orientada a valor.",
+  "positioning": "Conteúdo útil, objetivo e alinhado ao público.",
+  "personality": ["profissional", "objetiva", "confiavel"],
+
+  "voice": {
+    "tone": ["claro", "direto", "respeitoso"],
+    "do": [
+      "usar linguagem simples",
+      "explicar termos quando necessario",
+      "focar em beneficios reais",
+      "ser especifico e pratico"
+    ],
+    "dont": [
+      "promessas absolutas",
+      "claims medicos",
+      "linguagem ofensiva",
+      "jargoes sem explicacao",
+      "cliches vazios"
+    ]
+  },
+
+  "audiences": [
+    {
+      "name": "Publico geral",
+      "pains": ["falta de tempo", "excesso de informacao"],
+      "desires": ["clareza", "resultado", "confianca"]
+    }
+  ],
+
+  "products": [],
+  "keywords": { "must_use": [], "avoid": [] }
+}

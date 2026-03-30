@@ -1,0 +1,31 @@
+{
+  "brand_name": "Carol Graber",
+  "segment": "Numerologia Terapêutica e Autoconhecimento",
+  "tone_of_voice": "Acolhedor, inspirador, consciente e profissional. Evita misticismo exagerado, focando na numerologia como ferramenta de clareza e direção.",
+  "core_values": ["Autoconhecimento", "Propósito", "Transformação", "Clareza", "Espiritualidade Prática"],
+  "target_audience": "Mulheres em transição de carreira ou busca por propósito, que buscam entender seus ciclos e talentos através dos números.",
+  "main_topics": ["Mapa Numerológico", "Ciclos de Vida", "Ano Pessoal", "Transição de Carreira", "Despertar da Consciência", "Maternidade", "Relacionamentos"],
+
+  "brand_pillars": [
+    {
+      "name": "Clareza nos Ciclos",
+      "description": "Ajudar a cliente a entender em que fase da vida ela está para tomar decisões sem ansiedade."
+    },
+    {
+      "name": "Direcionamento de Carreira",
+      "description": "Uso dos números para validar talentos e guiar transições profissionais com segurança."
+    },
+    {
+      "name": "Autonomia e Consciência",
+      "description": "O mapa não determina o futuro, ele dá as ferramentas para a cliente construir o seu próprio caminho."
+    },
+     {
+      "name": "Maternidade Consciente",
+      "description": "Utilizar o Mapa Infantil e a numerologia para entender a essência dos filhos, respeitando o tempo de cada criança e melhorando a conexão entre pais e filhos."
+    },
+    {
+      "name": "Relacionamentos e Sinastria",
+      "description": "Análise da dinâmica entre parceiros para identificar pontos de harmonia e desafios, promovendo relações mais maduras e equilibradas através dos números."
+    }
+  ]
+}

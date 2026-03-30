@@ -1,0 +1,22 @@
+{
+  "brand_name": "Mugô",
+  "segment": "Publicidade, Aplicativos, Automação e IA, Branding e Estratégia de Negócios",
+  "tone_of_voice": "Provocador, visionário, sofisticado e altamente estratégico. Usa uma linguagem que mistura termos de negócios (business centric) com um toque de rebeldia criativa.",
+  "core_values": ["Inovação Real", "Impacto Mensurável", "Design de Elite", "Pensamento Disruptivo"],
+  "target_audience": "Empresários, diretores de marketing e marcas que cansaram do 'feijão com arroz' e buscam escala através de branding forte e performance digital.",
+  "main_topics": ["Posicionamento de Marca", "Growth Marketing", "Cultura de Design", "Estratégia Cross-channel"],
+  "brand_pillars": [
+    {
+      "name": "Clientes (Parceria de Crescimento)",
+      "description": "Foco na construção de ativos de longo prazo. Não somos fornecedores, somos sócios estratégicos do sucesso do cliente."
+    },
+    {
+      "name": "Automação e IA",
+      "description": "A tecnologia como alavanca de eficiência operacional e escala criativa, eliminando o braçal e focando no intelectual."
+    },
+    {
+      "name": "Design de Elite",
+      "description": "A forma serve à função. Design que comunica valor, autoridade e justifica o preço premium."
+    }
+  ]
+}

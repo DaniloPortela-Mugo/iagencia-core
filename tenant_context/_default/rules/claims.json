@@ -1,0 +1,15 @@
+{
+  "allowed": [
+    "pode contribuir para",
+    "ajuda a melhorar",
+    "desenvolvido para",
+    "feito para facilitar"
+  ],
+  "restricted": [
+    "cura",
+    "trata",
+    "elimina",
+    "efeito garantido",
+    "comprovadamente superior"
+  ]
+}

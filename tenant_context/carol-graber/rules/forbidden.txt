@@ -1,0 +1,15 @@
+// rules/forbidden.txt
+sorte
+previsão
+previsão barata
+adivinhação
+místico
+esotérico
+milagre
+magia
+futuro garantido
+destino traçado
+amarração
+tarot (não misturar com numerologia a menos que explicitamente solicitado)
+astrologia (manter o foco na numerologia)
+gírias informais demais (ex: "miga", "tá ligada")

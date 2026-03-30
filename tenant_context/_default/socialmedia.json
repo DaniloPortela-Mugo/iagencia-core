@@ -1,0 +1,26 @@
+{
+  "default_formats": ["Post Estatico", "Carrossel", "Reels/TikTok", "Stories", "Artigo/Blog"],
+  "default_tones": ["Profissional", "Educativo", "Inspiracional", "Objetivo"],
+
+  "content_pillars": [
+    "Institucional",
+    "Produto/Servico",
+    "Educacao",
+    "Bastidores",
+    "Prova social"
+  ],
+
+  "weekly_logic": {
+    "w1_start_day": 5,
+    "w2_start_day": 12,
+    "w3_start_day": 19,
+    "w4_start_day": 26
+  },
+
+  "platforms": [
+    "Instagram (Feed)",
+    "Instagram (Stories)",
+    "TikTok / Reels",
+    "LinkedIn"
+  ]
+}

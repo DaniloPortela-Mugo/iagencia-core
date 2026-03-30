@@ -1,0 +1,19 @@
+{
+  "platform_focus": ["Instagram", "LinkedIn"],
+  "posting_frequency": "4x por semana (alternando entre insights de negócio e portfólio)",
+  "hashtags": ["#MugoAg", "#BrandingDeImpacto", "#StrategyFirst", "#DesignAgency", "#MarketingDePerformance"],
+  "emoji_style": "🚀 🎯 🧠 ⚡ ⬛",
+  "call_to_actions": [
+    "Vamos elevar o nível do seu jogo? Link na bio.",
+    "Comente 'ESTRATÉGIA' para receber nosso report.",
+    "O seu branding comunica o seu preço ou o seu valor?"
+  ],
+  "forbidden_words": ["barato", "promoção", "postzinho", "agência de marketing digital", "dicas rápidas"],
+   
+  "content_pillars": [
+    { "category": "Autoridade", "weight": "40%", "topics": ["Estratégia", "Branding", "Cases de Sucesso"] },
+    { "category": "Inovação", "weight": "40%", "topics": ["Automação", "IA", "Futuro da Publicidade"] },
+    { "category": "Relacionamento", "weight": "20%", "topics": ["Dia a dia da Agência", "Foco no Cliente"] }
+  ]
+
+}
