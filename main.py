@@ -2136,6 +2136,16 @@ async def delete_library_asset(asset_id: str):
     ASSETS_DB = [asset for asset in ASSETS_DB if str(asset.get("id")) != str(asset_id)]
     return {"status": "success", "message": "Arte excluída da Biblioteca!"}
 
+
+@app.get("/")
+async def root():
+    return {
+        "status": "ok",
+        "service": "iagencia-core",
+        "health": "/health",
+        "docs": "/docs"
+    }
+
 if __name__ == "__main__":
     import uvicorn
 
