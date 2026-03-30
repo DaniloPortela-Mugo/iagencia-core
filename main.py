@@ -2140,12 +2140,12 @@ async def delete_library_asset(asset_id: str):
 @app.get("/")
 async def root():
     return {
-        "status": "ok",
-        "service": "iagencia-core",
-        "health": "/health",
-        "docs": "/docs"
+        "name": "IAgência Core API",
+        "status": "online",
+        "version": "1.0.0",
+        "docs": "/docs",
+        "health": "/health"
     }
-
 if __name__ == "__main__":
     import uvicorn
 
