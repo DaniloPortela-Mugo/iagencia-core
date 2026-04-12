@@ -53,6 +53,13 @@ except ImportError:
     _GOOGLE_TRANSLATOR_AVAILABLE = False
 from src.services.prompt_video_refiner import refine_and_translate_video
 
+from flask import Flask
+from flask_cors import CORS
+
+app = Flask(__name__)
+# Isso permite que o seu frontend acesse o backend
+CORS(app)
+
 app = FastAPI()
 
 # Agentes
