@@ -103,131 +103,6 @@ def _supabase_get(url: str) -> dict:
         raise Exception(f"Supabase GET {resp.status_code}: {resp.text}")
     return resp.json()
 
-def _supabase_post(url: str, payload: dict) -> dict:
-    headers = _supabase_headers()
-    if not headers:
-        raise Exception("SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY não configurados.")
-    resp = requests.post(url, headers=headers, json=payload, timeout=30)
-    if resp.status_code >= 300:
-        raise Exception(f"Supabase POST {resp.status_code}: {resp.text}")
-    return resp.json()
-
-def _supabase_patch(url: str, payload: dict) -> dict:
-    headers = _supabase_headers()
-    if not headers:
-        raise Exception("SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY não configurados.")
-    resp = requests.patch(url, headers=headers, json=payload, timeout=30)
-    if resp.status_code >= 300:
-        raise Exception(f"Supabase PATCH {resp.status_code}: {resp.text}")
-    return resp.json()
-
-def _guess_content_type(path: str) -> str:
-    ext = Path(path).suffix.lower()
-    if ext == ".json":
-        return "application/json"
-    if ext == ".md":
-        return "text/markdown"
-    if ext == ".txt":
-        return "text/plain"
-    if ext == ".csv":
-        return "text/csv"
-    if ext in [".yml", ".yaml"]:
-        return "text/yaml"
-    return "application/octet-stream"
-
-def _is_probably_text(data: bytes) -> bool:
-    sample = data[:1024]
-    if b"\x00" in sample:
-        return False
-    nontext = 0
-    for b in sample:
-        if b < 9 or (b > 13 and b < 32):
-            nontext += 1
-    return (nontext / max(len(sample), 1)) < 0.1
-
-def _walk_files(root: Path) -> List[Path]:
-    files: List[Path] = []
-    for p in root.rglob("*"):
-        if p.is_file():
-            files.append(p)
-    return files
-
-def _build_oauth_state(tenant_slug: str) -> str:
-    payload = {
-        "t": tenant_slug,
-        "n": uuid.uuid4().hex,
-        "ts": int(time.time()),
-    }
-    body = base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
-    sig = hmac.new(OAUTH_STATE_SECRET.encode(), body.encode(), hashlib.sha256).hexdigest()
-    return f"{body}.{sig}"
-
-def _verify_oauth_state(state: str) -> dict:
-    try:
-        body, sig = state.split(".", 1)
-        expected = hmac.new(OAUTH_STATE_SECRET.encode(), body.encode(), hashlib.sha256).hexdigest()
-        if not hmac.compare_digest(expected, sig):
-            raise ValueError("Invalid state signature")
-        padded = body + "=" * (-len(body) % 4)
-        payload = json.loads(base64.urlsafe_b64decode(padded.encode()).decode())
-        return payload
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Invalid state: {e}")
-
-def _get_tenant_storage_config(tenant_slug: str) -> dict:
-    if not SUPABASE_URL:
-        return {"provider": "gdrive", "config": {}}
-    url = f"{SUPABASE_URL}/rest/v1/tenant_storage_config?select=provider,config&tenant_slug=eq.{tenant_slug}&limit=1"
-    data = _supabase_get(url)
-    if data and isinstance(data, list) and len(data) > 0:
-        return data[0]
-    return {"provider": "gdrive", "config": {}}
-
-def _get_drive_tokens(tenant_slug: str) -> Optional[dict]:
-    if not SUPABASE_URL:
-        return None
-    url = f"{SUPABASE_URL}/rest/v1/tenant_drive_tokens?select=*&tenant_slug=eq.{tenant_slug}&limit=1"
-    data = _supabase_get(url)
-    if data and isinstance(data, list) and len(data) > 0:
-        row = data[0]
-        if isinstance(row, dict):
-            if "access_token" in row:
-                row["access_token"] = decrypt_secret(row.get("access_token")) or row.get("access_token")
-            if "refresh_token" in row:
-                row["refresh_token"] = decrypt_secret(row.get("refresh_token")) or row.get("refresh_token")
-        return row
-    return None
-
-def _upsert_drive_tokens(tenant_slug: str, payload: dict) -> dict:
-    if not SUPABASE_URL:
-        return {}
-    url = f"{SUPABASE_URL}/rest/v1/tenant_drive_tokens?on_conflict=tenant_slug"
-    safe_payload = dict(payload or {})
-    if "access_token" in safe_payload:
-        safe_payload["access_token"] = encrypt_secret(safe_payload.get("access_token")) or safe_payload.get("access_token")
-    if "refresh_token" in safe_payload:
-        safe_payload["refresh_token"] = encrypt_secret(safe_payload.get("refresh_token")) or safe_payload.get("refresh_token")
-    body = {"tenant_slug": tenant_slug, **safe_payload}
-    return _supabase_post(url, body)
-
-def _refresh_drive_access_token(refresh_token: str) -> dict:
-    if not GOOGLE_DRIVE_CLIENT_ID or not GOOGLE_DRIVE_CLIENT_SECRET:
-        raise HTTPException(status_code=500, detail="Google Drive OAuth não configurado.")
-    token_url = "https://oauth2.googleapis.com/token"
-    resp = requests.post(
-        token_url,
-        data={
-            "client_id": GOOGLE_DRIVE_CLIENT_ID,
-            "client_secret": GOOGLE_DRIVE_CLIENT_SECRET,
-            "refresh_token": refresh_token,
-            "grant_type": "refresh_token",
-        },
-        timeout=30,
-    )
-    if resp.status_code >= 300:
-        raise HTTPException(status_code=400, detail=f"Drive refresh error: {resp.text}")
-    return resp.json()
-
 def _extract_bearer_token(request: Request) -> Optional[str]:
     auth = request.headers.get("authorization") or ""
     if auth.lower().startswith("bearer "):
@@ -261,47 +136,6 @@ def _user_can_access_tenant(user_id: str, tenant_slug: str) -> bool:
     if "mugo-ag" in slugs:
         return True
     return tenant_slug in slugs
-
-def _ensure_drive_folder(access_token: str, tenant_slug: str, existing_folder_id: Optional[str] = None) -> str:
-    if existing_folder_id:
-        return existing_folder_id
-    headers = {"Authorization": f"Bearer {access_token}"}
-    parent_query = ""
-    if GOOGLE_DRIVE_ROOT_FOLDER_ID:
-        parent_query = f" and '{GOOGLE_DRIVE_ROOT_FOLDER_ID}' in parents"
-    q = f"mimeType='application/vnd.google-apps.folder' and name='{tenant_slug}' and trashed=false{parent_query}"
-    params = {"q": q, "fields": "files(id,name)"}
-    resp = requests.get("https://www.googleapis.com/drive/v3/files", headers=headers, params=params, timeout=30)
-    if resp.status_code >= 300:
-        raise HTTPException(status_code=400, detail=f"Drive list error: {resp.text}")
-    files = resp.json().get("files") or []
-    if files:
-        return files[0]["id"]
-
-    metadata = {
-        "name": tenant_slug,
-        "mimeType": "application/vnd.google-apps.folder",
-    }
-    if GOOGLE_DRIVE_ROOT_FOLDER_ID:
-        metadata["parents"] = [GOOGLE_DRIVE_ROOT_FOLDER_ID]
-    resp = requests.post("https://www.googleapis.com/drive/v3/files", headers={**headers, "Content-Type": "application/json"}, json=metadata, timeout=30)
-    if resp.status_code >= 300:
-        raise HTTPException(status_code=400, detail=f"Drive create folder error: {resp.text}")
-    return resp.json()["id"]
-
-def _drive_upload_file(access_token: str, folder_id: str, filename: str, mime_type: str, file_bytes: bytes) -> str:
-    metadata = {
-        "name": filename,
-        "parents": [folder_id],
-    }
-    boundary = f"===============_{uuid.uuid4().hex}_=="
-    body = (
-        f"--{boundary}\r\n"
-        "Content-Type: application/json; charset=UTF-8\r\n\r\n"
-        f"{json.dumps(metadata)}\r\n"
-        f"--{boundary}\r\n"
-        f"Content-Type: {mime_type}\r\n\r\n"
-    ).encode() + file_bytes + f"\r\n--{boundary}--\r\n".encode()
 
 def _enforce_tenant_access(request: Request, tenant_slug: str):
     if not tenant_slug:
@@ -902,9 +736,6 @@ class VideoScriptRequest(BaseModel):
 
 
 @app.post("/creation/generate-video")
-async def generate_video_endpoint(req: dict):
-    refiner_data = req.get("refiner_data", {}) or {}
-    tenant_slug = req.get("tenant_slug", "mugo")
 async def generate_video_endpoint(request: Request, req: dict):
     refiner_data = req.get("refiner_data", {}) or {}
     tenant_slug = req.get("tenant_slug", "mugo")
@@ -1237,8 +1068,6 @@ async def update_event_day(request: Request, req: dict):
     return {"ok": True}
 
 @app.post("/SocialMedia/events/save")
-async def save_events(req: dict):
-    tenant_slug = req.get("tenant_slug", "mugo")
 async def save_events(request: Request, req: dict):
     tenant_slug = req.get("tenant_slug", "mugo")
     _enforce_tenant_access(request, tenant_slug)
@@ -1328,35 +1157,6 @@ class PromptPreviewRequest(BaseModel):
     media_type: str
     raw_data: Dict
 
-class GenerateMediaRequest(BaseModel):
-    tenant_slug: str
-    media_type: str  # "image" | "video"
-    engine: str
-    prompt: str
-    negative_prompt: Optional[str] = ""
-
-    width: int
-    height: int
-
-    # ✅ Referência principal (usada para vídeo Veo como 1º frame)
-    ref_image: Optional[str] = None
-
-    # ✅ Multi-imagem (Nana Banana)
-    face_image: Optional[str] = None
-    body_image: Optional[str] = None
-    product_image: Optional[str] = None
-    clothing_image: Optional[str] = None
-    style_image: Optional[str] = None
-
-    # ✅ Áudio (Veo) (por enquanto não roteando; só armazenado)
-    audio_base64: Optional[str] = None
-    tts_text: Optional[str] = None
-    tts_voice: Optional[str] = None
-    tts_tone: Optional[str] = None
-
-    translate: bool = False
-    refiner_data: Optional[Dict[str, Any]] = None
-
 class PlanRequest(BaseModel):
     tenant_slug: Optional[str] = None
     title: Optional[str] = None
@@ -1404,8 +1204,6 @@ class GenerateMediaRequest(BaseModel):
 # 🔄 ROTAS: BIBLIOTECA E APROVAÇÃO
 # ==========================================
 @app.get("/library/assets")
-async def get_library_assets(tenant_slug: str = "all"):
-    print(f"📁 Buscando arquivos para o cliente: {tenant_slug}")
 async def get_library_assets(request: Request, tenant_slug: str = "all"):
     print(f"📁 Buscando arquivos para o cliente: {tenant_slug}")
     _enforce_tenant_access(request, tenant_slug)
@@ -1788,8 +1586,6 @@ async def create_tenant_context_disk(req: Optional[Dict[str, Any]] = None):
 # 🧠 AGENTES DE PLANEJAMENTO E ESTRATÉGIA
 # ==========================================
 @app.post("/planning/agent")
-async def planning_agent(req: StrategyRequest):
-    print(f"🧠 CSO Agent desenhando a master strategy para: {req.brand}")
 async def planning_agent(request: Request, req: StrategyRequest):
     print(f"🧠 CSO Agent desenhando a master strategy para: {req.brand}")
     tenant_slug = getattr(req, "tenant_slug", None)
@@ -1848,8 +1644,6 @@ FORMATO (JSON STRICT):
         }
 
 @app.post("/planning/chat")
-async def planning_chat_agent(req: PlanningChatRequest):
-    print(f"🥊 CSO Copilot debatendo para: {req.brand}")
 async def planning_chat_agent(request: Request, req: PlanningChatRequest):
     print(f"🥊 CSO Copilot debatendo para: {req.brand}")
     if req.tenant_slug:
@@ -1888,9 +1682,6 @@ REGRAS:
         return {"response": "Estou offline da API. Me reconecte para continuarmos."}
 
 @app.post("/social/agent")
-async def social_agent(req: SocialRequest):
-    print(f"📱 Social Agent criando pauta estratégica para: {req.client}")
-
 async def social_agent(request: Request, req: SocialRequest):
     print(f"📱 Social Agent criando pauta estratégica para: {req.client}")
 
@@ -1933,8 +1724,6 @@ Retorne JSON STRICT:
         return {"week_plan": [{"day": "Erro", "format": "Aviso", "idea": "Falha no servidor.", "caption_hook": "Tente novamente."}]}
 
 @app.post("/copy/chat")
-async def copy_chat_agent(req: CopyChatRequest):
-    print(f"✍️ Criando Copy para a marca: {req.client}")
 async def copy_chat_agent(request: Request, req: CopyChatRequest):
     print(f"✍️ Criando Copy para a marca: {req.client}")
     if not req.tenant_slug:
@@ -2365,18 +2154,6 @@ async def generate_media(request: Request, req: GenerateMediaRequest):
 
 # --- ROTAS DE PRODUÇÃO ---
 @app.get("/library/suppliers")
-async def get_suppliers(tenant_slug: str = "mugo"):
-    return [
-        {"id": 1, "name": "Locadora Luz e Cia", "specialty": "Iluminação"},
-        {"id": 2, "name": "Câmera & Ação", "specialty": "Lentes e Câmeras"},
-        {"id": 3, "name": "Van do João", "specialty": "Transporte/Logística"},
-        {"id": 4, "name": "Catering Sabor", "specialty": "Alimentação"},
-        {"id": 5, "name": "Mega Estruturas", "specialty": "Tendas e Palcos"},
-    ]
-
-@app.post("/production/plan")
-async def generate_production_plan(req: PlanRequest):
-    print(f"🎬 Gerando plano de produção para data: {req.date}")
 async def get_suppliers(request: Request, tenant_slug: str = "mugo"):
     _enforce_tenant_access(request, tenant_slug)
     if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
@@ -2553,20 +2330,6 @@ async def get_media_dashboard(request: Request, tenant_slug: str):
 # ==========================================
 # 🗑️ ROTAS DE EXCLUSÃO (BIBLIOTECA E APROVAÇÃO)
 # ==========================================
-@app.delete("/approval/jobs/{job_id}")
-async def delete_approval_job(job_id: int):
-    global APPROVALS_DB
-    APPROVALS_DB = [job for job in APPROVALS_DB if job.get("id") != job_id]
-    return {"status": "success", "message": "Arte excluída das Aprovações!"}
-
-@app.delete("/library/assets/{asset_id}")
-async def delete_library_asset(asset_id: str):
-    # ✅ você usava LIBRARY_DB que não existe -> usando ASSETS_DB
-    global ASSETS_DB
-    ASSETS_DB = [asset for asset in ASSETS_DB if str(asset.get("id")) != str(asset_id)]
-    return {"status": "success", "message": "Arte excluída da Biblioteca!"}
-
-
 @app.get("/")
 async def root():
     return {
@@ -2576,6 +2339,7 @@ async def root():
         "docs": "/docs",
         "health": "/health"
     }
+@app.delete("/approval/jobs/{job_id}")
 async def delete_approval_job(request: Request, job_id: int, tenant_slug: str = "all"):
     if tenant_slug != "all":
         _enforce_tenant_access(request, tenant_slug)
