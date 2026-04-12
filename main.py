@@ -54,11 +54,14 @@ except ImportError:
 from src.services.prompt_video_refiner import refine_and_translate_video
 
 from flask import Flask
-from flask_cors import CORS
+from flask_cors import CORS # 1. Importe o CORS
 
 app = Flask(__name__)
-# Isso permite que o seu frontend acesse o backend
-CORS(app)
+CORS(app) # 2. Ative o CORS para todas as rotas
+
+@app.route('/')
+def home():
+    return {"status": "iAgencia API Rodando"}
 
 app = FastAPI()
 
