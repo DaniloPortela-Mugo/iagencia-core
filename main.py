@@ -15,27 +15,15 @@ import shutil
 from typing import Any, Dict, Optional, List, Tuple
 from datetime import datetime
 from pathlib import Path
-<<<<<<< HEAD
-=======
-import traceback
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
 import asyncio
 import sys
 import os
 from src.services.planning_agent import load_tenant_context, get_client
-<<<<<<< HEAD
-=======
-from pathlib import Path
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
 from src.services.video_logic import generate_cinematic_script
 from src.services.crypto_utils import encrypt_secret, decrypt_secret
 
 # Framework & Libs
-<<<<<<< HEAD
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
-=======
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
 from fastapi.responses import JSONResponse
 from fastapi import APIRouter
 from fastapi.middleware.cors import CORSMiddleware
@@ -53,16 +41,6 @@ except ImportError:
     _GOOGLE_TRANSLATOR_AVAILABLE = False
 from src.services.prompt_video_refiner import refine_and_translate_video
 
-from flask import Flask
-from flask_cors import CORS # 1. Importe o CORS
-
-app = Flask(__name__)
-CORS(app) # 2. Ative o CORS para todas as rotas
-
-@app.route('/')
-def home():
-    return {"status": "iAgencia API Rodando"}
-
 app = FastAPI()
 
 # Agentes
@@ -74,8 +52,6 @@ from src.services.planning_agent import chat_with_planner
 from src.services.social_agent import get_social_intelligence, generate_social_grid
 from typing import Dict, Optional, List
 from starlette.concurrency import run_in_threadpool
-# ✅ CRIE O APP ANTES DE QUALQUER app.mount / app.add_middleware
-app = FastAPI()
 
 # ==========================================
 # ⚙️ CONFIGURAÇÃO & INICIALIZAÇÃO
@@ -127,7 +103,6 @@ def _supabase_get(url: str) -> dict:
         raise Exception(f"Supabase GET {resp.status_code}: {resp.text}")
     return resp.json()
 
-<<<<<<< HEAD
 def _supabase_post(url: str, payload: dict) -> dict:
     headers = _supabase_headers()
     if not headers:
@@ -252,7 +227,6 @@ def _refresh_drive_access_token(refresh_token: str) -> dict:
     if resp.status_code >= 300:
         raise HTTPException(status_code=400, detail=f"Drive refresh error: {resp.text}")
     return resp.json()
-=======
 
 def _extract_bearer_token(request: Request) -> Optional[str]:
     auth = request.headers.get("authorization") or ""
@@ -287,7 +261,6 @@ def _user_can_access_tenant(user_id: str, tenant_slug: str) -> bool:
     if "mugo-ag" in slugs:
         return True
     return tenant_slug in slugs
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
 
 def _ensure_drive_folder(access_token: str, tenant_slug: str, existing_folder_id: Optional[str] = None) -> str:
     if existing_folder_id:
@@ -305,7 +278,6 @@ def _ensure_drive_folder(access_token: str, tenant_slug: str, existing_folder_id
     if files:
         return files[0]["id"]
 
-<<<<<<< HEAD
     metadata = {
         "name": tenant_slug,
         "mimeType": "application/vnd.google-apps.folder",
@@ -331,7 +303,6 @@ def _drive_upload_file(access_token: str, folder_id: str, filename: str, mime_ty
         f"Content-Type: {mime_type}\r\n\r\n"
     ).encode() + file_bytes + f"\r\n--{boundary}--\r\n".encode()
 
-=======
 def _enforce_tenant_access(request: Request, tenant_slug: str):
     if not tenant_slug:
         raise HTTPException(status_code=400, detail="tenant_slug é obrigatório.")
@@ -524,7 +495,6 @@ def _drive_upload_file(access_token: str, folder_id: str, filename: str, mime_ty
         f"Content-Type: {mime_type}\r\n\r\n"
     ).encode() + file_bytes + f"\r\n--{boundary}--\r\n".encode()
 
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     headers = {
         "Authorization": f"Bearer {access_token}",
         "Content-Type": f"multipart/related; boundary={boundary}",
@@ -932,16 +902,13 @@ class VideoScriptRequest(BaseModel):
 
 
 @app.post("/creation/generate-video")
-<<<<<<< HEAD
 async def generate_video_endpoint(req: dict):
     refiner_data = req.get("refiner_data", {}) or {}
     tenant_slug = req.get("tenant_slug", "mugo")
-=======
 async def generate_video_endpoint(request: Request, req: dict):
     refiner_data = req.get("refiner_data", {}) or {}
     tenant_slug = req.get("tenant_slug", "mugo")
     _enforce_tenant_access(request, tenant_slug)
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     engine = (req.get("engine") or refiner_data.get("engine") or "kling").lower()
 
     if engine == "veo" and bool(req.get("preview_veo_json")):
@@ -1062,38 +1029,24 @@ async def generate_video_endpoint(request: Request, req: dict):
     
 # Endpoint para o Dashboard de Inteligência
 @app.post("/planning/dashboard-data")
-<<<<<<< HEAD
-async def dashboard_data_endpoint(req: dict):
-    tenant_slug = req.get("tenant_slug", "mugo")
-=======
 async def dashboard_data_endpoint(request: Request, req: dict):
     tenant_slug = req.get("tenant_slug", "mugo")
     _enforce_tenant_access(request, tenant_slug)
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     return get_social_intelligence(tenant_slug)
 
 # Endpoint para a geração mágica do Grid
 @app.post("/SocialMedia/grid/generate")
-<<<<<<< HEAD
-async def generate_grid_endpoint(req: dict):
-    tenant_slug = req.get("tenant_slug", "mugo")
-=======
 async def generate_grid_endpoint(request: Request, req: dict):
     tenant_slug = req.get("tenant_slug", "mugo")
     _enforce_tenant_access(request, tenant_slug)
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     context = req.get("context", "")
     grid_data = await generate_social_grid(tenant_slug, context)
     return {"grid": grid_data}
 
 
 @app.post("/SocialMedia/chat")
-<<<<<<< HEAD
-async def social_media_chat(req: dict):
-=======
 async def social_media_chat(request: Request, req: dict):
     _enforce_tenant_access(request, req.get("tenant_slug", "mugo"))
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     response = chat_with_planner(
         history=req.get("history", []),
         current_grid_context=req.get("grid_context", ""),
@@ -1186,26 +1139,17 @@ def _grid_path(tenant_slug: str, year: int, month: int) -> Path:
     return DATA_DIR / f"grid_{safe}_{year}_{month}.json"
 
 @app.get("/SocialMedia/grid")
-<<<<<<< HEAD
-async def get_grid(tenant_slug: str, year: int, month: int):
-=======
 async def get_grid(request: Request, tenant_slug: str, year: int, month: int):
     _enforce_tenant_access(request, tenant_slug)
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     path = _grid_path(tenant_slug, year, month)
     if not path.exists():
         return {"grid": INITIAL_CONTENT_GRID}  # ou [] se preferir
     return {"grid": json.loads(path.read_text(encoding="utf-8"))}
 
 @app.post("/SocialMedia/grid/save")
-<<<<<<< HEAD
-async def save_grid(req: dict):
-    tenant_slug = req.get("tenant_slug", "mugo")
-=======
 async def save_grid(request: Request, req: dict):
     tenant_slug = req.get("tenant_slug", "mugo")
     _enforce_tenant_access(request, tenant_slug)
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     year = int(req.get("year"))
     month = int(req.get("month"))
     grid = req.get("grid", [])
@@ -1218,12 +1162,8 @@ async def save_grid(request: Request, req: dict):
     return {"ok": True}
 
 @app.post("/api/media/upload-base64")
-<<<<<<< HEAD
-async def upload_base64(req: UploadBase64Request):
-=======
 async def upload_base64(request: Request, req: UploadBase64Request):
     _enforce_tenant_access(request, req.tenant_slug)
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     if not req.data_url:
         raise HTTPException(status_code=400, detail="data_url vazio.")
 
@@ -1262,26 +1202,17 @@ def _events_path(tenant_slug: str, year: int, month: int) -> Path:
     return DATA_DIR / f"events_{safe}_{year}_{month}.json"
 
 @app.get("/SocialMedia/events")
-<<<<<<< HEAD
-async def get_events(tenant_slug: str, year: int, month: int):
-=======
 async def get_events(request: Request, tenant_slug: str, year: int, month: int):
     _enforce_tenant_access(request, tenant_slug)
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     path = _events_path(tenant_slug, year, month)
     if not path.exists():
         return {"events": []}
     return {"events": json.loads(path.read_text(encoding="utf-8"))}
 
 @app.post("/SocialMedia/events/update-day")
-<<<<<<< HEAD
-async def update_event_day(req: dict):
-    tenant_slug = req.get("tenant_slug", "mugo")
-=======
 async def update_event_day(request: Request, req: dict):
     tenant_slug = req.get("tenant_slug", "mugo")
     _enforce_tenant_access(request, tenant_slug)
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     year = int(req.get("year"))
     month = int(req.get("month"))
     event_id = int(req.get("event_id"))
@@ -1306,14 +1237,11 @@ async def update_event_day(request: Request, req: dict):
     return {"ok": True}
 
 @app.post("/SocialMedia/events/save")
-<<<<<<< HEAD
 async def save_events(req: dict):
     tenant_slug = req.get("tenant_slug", "mugo")
-=======
 async def save_events(request: Request, req: dict):
     tenant_slug = req.get("tenant_slug", "mugo")
     _enforce_tenant_access(request, tenant_slug)
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     year = int(req.get("year"))
     month = int(req.get("month"))
     events = req.get("events") or []
@@ -1365,19 +1293,13 @@ class BriefingRequest(BaseModel):
     raw_input: str
 
 class StrategyRequest(BaseModel):
-<<<<<<< HEAD
-=======
     tenant_slug: Optional[str] = None
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     brand: str
     objective: str
     target_audience: str
 
 class PlanningChatRequest(BaseModel):
-<<<<<<< HEAD
-=======
     tenant_slug: Optional[str] = None
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     brand: str
     message: str
     current_strategy: str
@@ -1389,10 +1311,7 @@ class SocialRequest(BaseModel):
     platform: str
 
 class CopyChatRequest(BaseModel):
-<<<<<<< HEAD
-=======
     tenant_slug: Optional[str] = None
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     client: str
     message: str
     briefing: str
@@ -1409,7 +1328,6 @@ class PromptPreviewRequest(BaseModel):
     media_type: str
     raw_data: Dict
 
-<<<<<<< HEAD
 class GenerateMediaRequest(BaseModel):
     tenant_slug: str
     media_type: str  # "image" | "video"
@@ -1439,7 +1357,6 @@ class GenerateMediaRequest(BaseModel):
     translate: bool = False
     refiner_data: Optional[Dict[str, Any]] = None
 
-=======
 class PlanRequest(BaseModel):
     tenant_slug: Optional[str] = None
     title: Optional[str] = None
@@ -1483,19 +1400,15 @@ class GenerateMediaRequest(BaseModel):
     translate: bool = False
     refiner_data: Optional[Dict[str, Any]] = None
 
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
 # ==========================================
 # 🔄 ROTAS: BIBLIOTECA E APROVAÇÃO
 # ==========================================
 @app.get("/library/assets")
-<<<<<<< HEAD
 async def get_library_assets(tenant_slug: str = "all"):
     print(f"📁 Buscando arquivos para o cliente: {tenant_slug}")
-=======
 async def get_library_assets(request: Request, tenant_slug: str = "all"):
     print(f"📁 Buscando arquivos para o cliente: {tenant_slug}")
     _enforce_tenant_access(request, tenant_slug)
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     if tenant_slug == "all":
         return {"assets": ASSETS_DB}
     tenant_assets = [asset for asset in ASSETS_DB if asset["tenant_slug"] == tenant_slug]
@@ -1568,17 +1481,11 @@ async def drive_oauth_callback(code: str, state: str):
 
 @app.post("/library/upload")
 async def library_upload(
-<<<<<<< HEAD
-    tenant_slug: str = Form(...),
-    file: UploadFile = File(...),
-):
-=======
     request: Request,
     tenant_slug: str = Form(...),
     file: UploadFile = File(...),
 ):
     _enforce_tenant_access(request, tenant_slug)
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     cfg = _get_tenant_storage_config(tenant_slug)
     provider = (cfg.get("provider") or "gdrive").lower()
 
@@ -1626,11 +1533,7 @@ async def library_upload(
     return {"ok": True, "file_id": file_id, "provider": "gdrive"}
 
 @app.post("/library/delete")
-<<<<<<< HEAD
-async def library_delete(asset_id: int = Form(...)):
-=======
 async def library_delete(request: Request, asset_id: int = Form(...)):
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     if not SUPABASE_URL:
         raise HTTPException(status_code=500, detail="Supabase não configurado.")
     fetch_url = f"{SUPABASE_URL}/rest/v1/library?select=id,tenant_slug,url,provider&id=eq.{asset_id}&limit=1"
@@ -1638,10 +1541,7 @@ async def library_delete(request: Request, asset_id: int = Form(...)):
     if not data:
         raise HTTPException(status_code=404, detail="Asset não encontrado.")
     asset = data[0]
-<<<<<<< HEAD
-=======
     _enforce_tenant_access(request, asset.get("tenant_slug"))
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     provider = (asset.get("provider") or "gdrive").lower()
     url = asset.get("url") or ""
 
@@ -1666,25 +1566,16 @@ async def library_delete(request: Request, asset_id: int = Form(...)):
     return {"ok": True}
 
 @app.get("/approval/jobs")
-<<<<<<< HEAD
-async def get_approval_jobs(tenant_slug: str = "all"):
-    print("📋 Buscando lista de aprovações...")
-=======
 async def get_approval_jobs(request: Request, tenant_slug: str = "all"):
     print("📋 Buscando lista de aprovações...")
     _enforce_tenant_access(request, tenant_slug)
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     if tenant_slug == "all":
         return APPROVALS_DB
     return [job for job in APPROVALS_DB if job.get("tenant_slug") == tenant_slug]
 
 @app.post("/library/assets")
-<<<<<<< HEAD
-async def save_library_asset(req: SaveAssetRequest):
-=======
 async def save_library_asset(request: Request, req: SaveAssetRequest):
     _enforce_tenant_access(request, req.tenant_slug)
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     print(f"💾 Salvando arte final na biblioteca: {req.client}")
     image_url = save_base64_image(req.image_base64, req.tenant_slug)
     new_asset = {
@@ -1701,12 +1592,8 @@ async def save_library_asset(request: Request, req: SaveAssetRequest):
     return {"status": "success", "asset": new_asset}
 
 @app.post("/approval/jobs")
-<<<<<<< HEAD
-async def save_approval_job(req: SaveApprovalRequest):
-=======
 async def save_approval_job(request: Request, req: SaveApprovalRequest):
     _enforce_tenant_access(request, req.tenant_slug)
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     print(f"🚀 Enviando arte para aprovação do cliente: {req.client}")
     image_url = save_base64_image(req.image_base64, req.tenant_slug)
     now_str = time.strftime("%d %b, %H:%M")
@@ -1730,35 +1617,23 @@ async def save_approval_job(request: Request, req: SaveApprovalRequest):
     return {"status": "success", "job": new_job}
 
 @app.get("/atendimento/tickets")
-<<<<<<< HEAD
-async def get_tickets(tenant_slug: str = "all"):
-=======
 async def get_tickets(request: Request, tenant_slug: str = "all"):
     _enforce_tenant_access(request, tenant_slug)
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     if tenant_slug == "all":
         return {"tickets": TICKETS_DB}
     return {"tickets": [t for t in TICKETS_DB if t["tenant_slug"] == tenant_slug]}
 
 @app.post("/atendimento/tickets")
-<<<<<<< HEAD
-async def create_ticket(ticket: Ticket):
-=======
 async def create_ticket(request: Request, ticket: Ticket):
     _enforce_tenant_access(request, ticket.tenant_slug)
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     new_t = ticket.model_dump()
     new_t["id"] = len(TICKETS_DB) + 1
     TICKETS_DB.append(new_t)
     return {"status": "created", "ticket": new_t}
 
 @app.post("/atendimento/agent")
-<<<<<<< HEAD
-async def atendimento_agent(req: AtendimentoAgentRequest):
-=======
 async def atendimento_agent(request: Request, req: AtendimentoAgentRequest):
     _enforce_tenant_access(request, req.tenant_slug)
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     try:
         result = await process_atendimento_briefing(
             tenant_slug=req.tenant_slug,
@@ -1913,16 +1788,13 @@ async def create_tenant_context_disk(req: Optional[Dict[str, Any]] = None):
 # 🧠 AGENTES DE PLANEJAMENTO E ESTRATÉGIA
 # ==========================================
 @app.post("/planning/agent")
-<<<<<<< HEAD
 async def planning_agent(req: StrategyRequest):
     print(f"🧠 CSO Agent desenhando a master strategy para: {req.brand}")
-=======
 async def planning_agent(request: Request, req: StrategyRequest):
     print(f"🧠 CSO Agent desenhando a master strategy para: {req.brand}")
     tenant_slug = getattr(req, "tenant_slug", None)
     if tenant_slug:
         _enforce_tenant_access(request, tenant_slug)
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
 
     if client is None:
         return {
@@ -1976,15 +1848,12 @@ FORMATO (JSON STRICT):
         }
 
 @app.post("/planning/chat")
-<<<<<<< HEAD
 async def planning_chat_agent(req: PlanningChatRequest):
     print(f"🥊 CSO Copilot debatendo para: {req.brand}")
-=======
 async def planning_chat_agent(request: Request, req: PlanningChatRequest):
     print(f"🥊 CSO Copilot debatendo para: {req.brand}")
     if req.tenant_slug:
         _enforce_tenant_access(request, req.tenant_slug)
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
 
     if client is None:
         return {"response": "OPENAI_API_KEY não configurada."}
@@ -2019,11 +1888,9 @@ REGRAS:
         return {"response": "Estou offline da API. Me reconecte para continuarmos."}
 
 @app.post("/social/agent")
-<<<<<<< HEAD
 async def social_agent(req: SocialRequest):
     print(f"📱 Social Agent criando pauta estratégica para: {req.client}")
 
-=======
 async def social_agent(request: Request, req: SocialRequest):
     print(f"📱 Social Agent criando pauta estratégica para: {req.client}")
 
@@ -2032,7 +1899,6 @@ async def social_agent(request: Request, req: SocialRequest):
         raise HTTPException(status_code=400, detail="tenant_slug é obrigatório.")
     _enforce_tenant_access(request, tenant_slug)
 
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     if client is None:
         return {"week_plan": [{"day": "Erro", "format": "Offline", "idea": "OPENAI_API_KEY não configurada.", "caption_hook": "Configure a chave."}]}
 
@@ -2067,16 +1933,13 @@ Retorne JSON STRICT:
         return {"week_plan": [{"day": "Erro", "format": "Aviso", "idea": "Falha no servidor.", "caption_hook": "Tente novamente."}]}
 
 @app.post("/copy/chat")
-<<<<<<< HEAD
 async def copy_chat_agent(req: CopyChatRequest):
     print(f"✍️ Criando Copy para a marca: {req.client}")
-=======
 async def copy_chat_agent(request: Request, req: CopyChatRequest):
     print(f"✍️ Criando Copy para a marca: {req.client}")
     if not req.tenant_slug:
         raise HTTPException(status_code=400, detail="tenant_slug é obrigatório.")
     _enforce_tenant_access(request, req.tenant_slug)
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
 
     if client is None:
         return {"response": "OPENAI_API_KEY não configurada."}
@@ -2358,24 +2221,15 @@ def _inject_quality_protocols(prompt: str) -> str:
 # ==========================================
 
 @app.post("/creation/preview-prompt")
-<<<<<<< HEAD
-async def preview_prompt_agent(req: PromptPreviewRequest):
-    """Gera o preview visual do prompt refinado antes de gastar créditos."""
-=======
 async def preview_prompt_agent(request: Request, req: PromptPreviewRequest):
     """Gera o preview visual do prompt refinado antes de gastar créditos."""
     _enforce_tenant_access(request, req.tenant_slug)
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     optimized = prepare_refined_prompt(req.dict(), req.media_type)
     return {"prompt": optimized}
 
 @app.post("/creation/generate-image")
-<<<<<<< HEAD
-async def generate_media(req: GenerateMediaRequest):
-=======
 async def generate_media(request: Request, req: GenerateMediaRequest):
     _enforce_tenant_access(request, req.tenant_slug)
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     print(f"🚀 Iniciando Geração: {req.engine} | Tipo: {req.media_type}")
 
     # --- 1. REFINAMENTO DE PROMPT (O FIM DO CÓDIGO DE MÁQUINA) ---
@@ -2511,7 +2365,6 @@ async def generate_media(request: Request, req: GenerateMediaRequest):
 
 # --- ROTAS DE PRODUÇÃO ---
 @app.get("/library/suppliers")
-<<<<<<< HEAD
 async def get_suppliers(tenant_slug: str = "mugo"):
     return [
         {"id": 1, "name": "Locadora Luz e Cia", "specialty": "Iluminação"},
@@ -2524,7 +2377,6 @@ async def get_suppliers(tenant_slug: str = "mugo"):
 @app.post("/production/plan")
 async def generate_production_plan(req: PlanRequest):
     print(f"🎬 Gerando plano de produção para data: {req.date}")
-=======
 async def get_suppliers(request: Request, tenant_slug: str = "mugo"):
     _enforce_tenant_access(request, tenant_slug)
     if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
@@ -2602,17 +2454,10 @@ async def generate_production_plan(request: Request, req: PlanRequest):
     tenant_slug = req.tenant_slug or "mugo"
     _enforce_tenant_access(request, tenant_slug)
     print(f"🎬 Gerando plano de produção para data: {effective_date}")
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
 
     if client is None:
         return {"error": "OPENAI_API_KEY não configurada."}
 
-<<<<<<< HEAD
-    system_prompt = f"""
-Você é um Produtor Executivo Sênior.
-BRIEF: {req.brief}
-DATA: {req.date}
-=======
     def _load_production_prompt(slug: str) -> str:
         root = Path(__file__).resolve().parent / "tenant_context"
         candidates = [
@@ -2636,7 +2481,6 @@ DATA: {effective_date}
 
 Diretrizes do tenant:
 {tenant_prompt}
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
 
 Retorne JSON STRICT com:
 timeline, staff_needs, budget_lines, risks
@@ -2655,15 +2499,6 @@ timeline, staff_needs, budget_lines, risks
         return {"error": str(e)}
 
 @app.post("/production/chat")
-<<<<<<< HEAD
-async def production_chat(req: ProdChatRequest):
-    if client is None:
-        return {"response": "OPENAI_API_KEY não configurada."}
-
-    system_prompt = f"""
-Você é o Assistente de Produção RTV/Eventos.
-Contexto: {req.brief_context}
-=======
 async def production_chat(request: Request, req: ProdChatRequest):
     if req.tenant_slug:
         _enforce_tenant_access(request, req.tenant_slug)
@@ -2683,7 +2518,6 @@ async def production_chat(request: Request, req: ProdChatRequest):
 Você é o Assistente de Produção RTV/Eventos.
 Contexto: {req.brief_context}
 {suppliers_text}
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
 Responda direto, focado em logística e orçamento.
 """
     try:
@@ -2706,12 +2540,8 @@ async def health_check():
 # ROTAS DE MIDIA
 # =====================================
 @app.get("/media/dashboard/{tenant_slug}")
-<<<<<<< HEAD
-async def get_media_dashboard(tenant_slug: str):
-=======
 async def get_media_dashboard(request: Request, tenant_slug: str):
     _enforce_tenant_access(request, tenant_slug)
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     # ✅ seu exemplo tinha meta_data/google_data não definidos -> stub seguro
     return {
         "exec_data": [
@@ -2724,7 +2554,6 @@ async def get_media_dashboard(request: Request, tenant_slug: str):
 # 🗑️ ROTAS DE EXCLUSÃO (BIBLIOTECA E APROVAÇÃO)
 # ==========================================
 @app.delete("/approval/jobs/{job_id}")
-<<<<<<< HEAD
 async def delete_approval_job(job_id: int):
     global APPROVALS_DB
     APPROVALS_DB = [job for job in APPROVALS_DB if job.get("id") != job_id]
@@ -2747,7 +2576,6 @@ async def root():
         "docs": "/docs",
         "health": "/health"
     }
-=======
 async def delete_approval_job(request: Request, job_id: int, tenant_slug: str = "all"):
     if tenant_slug != "all":
         _enforce_tenant_access(request, tenant_slug)
@@ -2776,7 +2604,6 @@ async def delete_library_asset(request: Request, asset_id: str, tenant_slug: str
         ]
     return {"status": "success", "message": "Arte excluída da Biblioteca!"}
 
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
 if __name__ == "__main__":
     import uvicorn
 
