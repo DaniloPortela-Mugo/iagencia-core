@@ -1,0 +1,8 @@
+{
+  "client": {
+    "color": "bg-green-600",
+    "border": "border-green-600",
+    "logo_url": "/static/tenants/ssavon/logo.svg",
+    "logo_fallback": "S"
+  }
+}

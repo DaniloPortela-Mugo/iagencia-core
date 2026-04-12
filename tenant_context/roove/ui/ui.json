@@ -1,0 +1,13 @@
+{
+  "primary_color": "#8E9B7B", 
+  "secondary_color": "#F9F8F6",
+  "accent_color": "#DDA7A5",
+  "font_family": "Helvetica Neue, system-ui, sans-serif",
+  "border_radius": "16px",
+  "theme": "light",
+  "status_colors": {
+    "todo": "#D4D4D8",
+    "doing": "#8E9B7B",
+    "done": "#DDA7A5"
+  }
+}

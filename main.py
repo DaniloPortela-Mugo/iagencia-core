@@ -15,15 +15,27 @@ import shutil
 from typing import Any, Dict, Optional, List, Tuple
 from datetime import datetime
 from pathlib import Path
+<<<<<<< HEAD
+=======
+import traceback
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
 import asyncio
 import sys
 import os
 from src.services.planning_agent import load_tenant_context, get_client
+<<<<<<< HEAD
+=======
+from pathlib import Path
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
 from src.services.video_logic import generate_cinematic_script
 from src.services.crypto_utils import encrypt_secret, decrypt_secret
 
 # Framework & Libs
+<<<<<<< HEAD
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+=======
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
 from fastapi.responses import JSONResponse
 from fastapi import APIRouter
 from fastapi.middleware.cors import CORSMiddleware
@@ -105,6 +117,7 @@ def _supabase_get(url: str) -> dict:
         raise Exception(f"Supabase GET {resp.status_code}: {resp.text}")
     return resp.json()
 
+<<<<<<< HEAD
 def _supabase_post(url: str, payload: dict) -> dict:
     headers = _supabase_headers()
     if not headers:
@@ -122,6 +135,236 @@ def _supabase_patch(url: str, payload: dict) -> dict:
     if resp.status_code >= 300:
         raise Exception(f"Supabase PATCH {resp.status_code}: {resp.text}")
     return resp.json()
+
+def _guess_content_type(path: str) -> str:
+    ext = Path(path).suffix.lower()
+    if ext == ".json":
+        return "application/json"
+    if ext == ".md":
+        return "text/markdown"
+    if ext == ".txt":
+        return "text/plain"
+    if ext == ".csv":
+        return "text/csv"
+    if ext in [".yml", ".yaml"]:
+        return "text/yaml"
+    return "application/octet-stream"
+
+def _is_probably_text(data: bytes) -> bool:
+    sample = data[:1024]
+    if b"\x00" in sample:
+        return False
+    nontext = 0
+    for b in sample:
+        if b < 9 or (b > 13 and b < 32):
+            nontext += 1
+    return (nontext / max(len(sample), 1)) < 0.1
+
+def _walk_files(root: Path) -> List[Path]:
+    files: List[Path] = []
+    for p in root.rglob("*"):
+        if p.is_file():
+            files.append(p)
+    return files
+
+def _build_oauth_state(tenant_slug: str) -> str:
+    payload = {
+        "t": tenant_slug,
+        "n": uuid.uuid4().hex,
+        "ts": int(time.time()),
+    }
+    body = base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
+    sig = hmac.new(OAUTH_STATE_SECRET.encode(), body.encode(), hashlib.sha256).hexdigest()
+    return f"{body}.{sig}"
+
+def _verify_oauth_state(state: str) -> dict:
+    try:
+        body, sig = state.split(".", 1)
+        expected = hmac.new(OAUTH_STATE_SECRET.encode(), body.encode(), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(expected, sig):
+            raise ValueError("Invalid state signature")
+        padded = body + "=" * (-len(body) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(padded.encode()).decode())
+        return payload
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid state: {e}")
+
+def _get_tenant_storage_config(tenant_slug: str) -> dict:
+    if not SUPABASE_URL:
+        return {"provider": "gdrive", "config": {}}
+    url = f"{SUPABASE_URL}/rest/v1/tenant_storage_config?select=provider,config&tenant_slug=eq.{tenant_slug}&limit=1"
+    data = _supabase_get(url)
+    if data and isinstance(data, list) and len(data) > 0:
+        return data[0]
+    return {"provider": "gdrive", "config": {}}
+
+def _get_drive_tokens(tenant_slug: str) -> Optional[dict]:
+    if not SUPABASE_URL:
+        return None
+    url = f"{SUPABASE_URL}/rest/v1/tenant_drive_tokens?select=*&tenant_slug=eq.{tenant_slug}&limit=1"
+    data = _supabase_get(url)
+    if data and isinstance(data, list) and len(data) > 0:
+        row = data[0]
+        if isinstance(row, dict):
+            if "access_token" in row:
+                row["access_token"] = decrypt_secret(row.get("access_token")) or row.get("access_token")
+            if "refresh_token" in row:
+                row["refresh_token"] = decrypt_secret(row.get("refresh_token")) or row.get("refresh_token")
+        return row
+    return None
+
+def _upsert_drive_tokens(tenant_slug: str, payload: dict) -> dict:
+    if not SUPABASE_URL:
+        return {}
+    url = f"{SUPABASE_URL}/rest/v1/tenant_drive_tokens?on_conflict=tenant_slug"
+    safe_payload = dict(payload or {})
+    if "access_token" in safe_payload:
+        safe_payload["access_token"] = encrypt_secret(safe_payload.get("access_token")) or safe_payload.get("access_token")
+    if "refresh_token" in safe_payload:
+        safe_payload["refresh_token"] = encrypt_secret(safe_payload.get("refresh_token")) or safe_payload.get("refresh_token")
+    body = {"tenant_slug": tenant_slug, **safe_payload}
+    return _supabase_post(url, body)
+
+def _refresh_drive_access_token(refresh_token: str) -> dict:
+    if not GOOGLE_DRIVE_CLIENT_ID or not GOOGLE_DRIVE_CLIENT_SECRET:
+        raise HTTPException(status_code=500, detail="Google Drive OAuth não configurado.")
+    token_url = "https://oauth2.googleapis.com/token"
+    resp = requests.post(
+        token_url,
+        data={
+            "client_id": GOOGLE_DRIVE_CLIENT_ID,
+            "client_secret": GOOGLE_DRIVE_CLIENT_SECRET,
+            "refresh_token": refresh_token,
+            "grant_type": "refresh_token",
+        },
+        timeout=30,
+    )
+    if resp.status_code >= 300:
+        raise HTTPException(status_code=400, detail=f"Drive refresh error: {resp.text}")
+    return resp.json()
+=======
+
+def _extract_bearer_token(request: Request) -> Optional[str]:
+    auth = request.headers.get("authorization") or ""
+    if auth.lower().startswith("bearer "):
+        return auth.split(" ", 1)[1].strip()
+    return None
+
+
+def _get_user_id_from_token(token: str) -> Optional[str]:
+    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
+        return None
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "apikey": SUPABASE_SERVICE_ROLE_KEY,
+    }
+    resp = requests.get(f"{SUPABASE_URL}/auth/v1/user", headers=headers, timeout=15)
+    if resp.status_code >= 300:
+        return None
+    data = resp.json()
+    return data.get("id")
+
+
+def _user_can_access_tenant(user_id: str, tenant_slug: str) -> bool:
+    if not user_id:
+        return False
+    url = f"{SUPABASE_URL}/rest/v1/user_tenants?select=tenant_slug&user_id=eq.{user_id}"
+    try:
+        rows = _supabase_get(url)
+    except Exception:
+        return False
+    slugs = {r.get("tenant_slug") for r in rows if r.get("tenant_slug")}
+    if "mugo-ag" in slugs:
+        return True
+    return tenant_slug in slugs
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
+
+def _ensure_drive_folder(access_token: str, tenant_slug: str, existing_folder_id: Optional[str] = None) -> str:
+    if existing_folder_id:
+        return existing_folder_id
+    headers = {"Authorization": f"Bearer {access_token}"}
+    parent_query = ""
+    if GOOGLE_DRIVE_ROOT_FOLDER_ID:
+        parent_query = f" and '{GOOGLE_DRIVE_ROOT_FOLDER_ID}' in parents"
+    q = f"mimeType='application/vnd.google-apps.folder' and name='{tenant_slug}' and trashed=false{parent_query}"
+    params = {"q": q, "fields": "files(id,name)"}
+    resp = requests.get("https://www.googleapis.com/drive/v3/files", headers=headers, params=params, timeout=30)
+    if resp.status_code >= 300:
+        raise HTTPException(status_code=400, detail=f"Drive list error: {resp.text}")
+    files = resp.json().get("files") or []
+    if files:
+        return files[0]["id"]
+
+<<<<<<< HEAD
+    metadata = {
+        "name": tenant_slug,
+        "mimeType": "application/vnd.google-apps.folder",
+    }
+    if GOOGLE_DRIVE_ROOT_FOLDER_ID:
+        metadata["parents"] = [GOOGLE_DRIVE_ROOT_FOLDER_ID]
+    resp = requests.post("https://www.googleapis.com/drive/v3/files", headers={**headers, "Content-Type": "application/json"}, json=metadata, timeout=30)
+    if resp.status_code >= 300:
+        raise HTTPException(status_code=400, detail=f"Drive create folder error: {resp.text}")
+    return resp.json()["id"]
+
+def _drive_upload_file(access_token: str, folder_id: str, filename: str, mime_type: str, file_bytes: bytes) -> str:
+    metadata = {
+        "name": filename,
+        "parents": [folder_id],
+    }
+    boundary = f"===============_{uuid.uuid4().hex}_=="
+    body = (
+        f"--{boundary}\r\n"
+        "Content-Type: application/json; charset=UTF-8\r\n\r\n"
+        f"{json.dumps(metadata)}\r\n"
+        f"--{boundary}\r\n"
+        f"Content-Type: {mime_type}\r\n\r\n"
+    ).encode() + file_bytes + f"\r\n--{boundary}--\r\n".encode()
+
+=======
+def _enforce_tenant_access(request: Request, tenant_slug: str):
+    if not tenant_slug:
+        raise HTTPException(status_code=400, detail="tenant_slug é obrigatório.")
+    token = _extract_bearer_token(request)
+    if not token:
+        raise HTTPException(status_code=401, detail="Token ausente.")
+    user_id = _get_user_id_from_token(token)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Token inválido.")
+    if tenant_slug == "all":
+        if not _user_can_access_tenant(user_id, "mugo-ag"):
+            raise HTTPException(status_code=403, detail="Acesso negado ao tenant.")
+        return
+    if not _user_can_access_tenant(user_id, tenant_slug):
+        raise HTTPException(status_code=403, detail="Acesso negado ao tenant.")
+
+def _supabase_post(url: str, payload: dict) -> dict:
+    headers = _supabase_headers()
+    if not headers:
+        raise Exception("SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY não configurados.")
+    resp = requests.post(url, headers=headers, json=payload, timeout=30)
+    if resp.status_code >= 300:
+        raise Exception(f"Supabase POST {resp.status_code}: {resp.text}")
+    if not resp.text:
+        return {}
+    try:
+        return resp.json()
+    except Exception:
+        return {}
+
+def _supabase_patch(url: str, payload: dict) -> dict:
+    headers = _supabase_headers()
+    if not headers:
+        raise Exception("SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY não configurados.")
+    resp = requests.patch(url, headers=headers, json=payload, timeout=30)
+    if resp.status_code >= 300:
+        raise Exception(f"Supabase PATCH {resp.status_code}: {resp.text}")
+    if not resp.text:
+        return {}
+    try:
+        return resp.json()
+    except Exception:
+        return {}
 
 def _guess_content_type(path: str) -> str:
     ext = Path(path).suffix.lower()
@@ -271,6 +514,7 @@ def _drive_upload_file(access_token: str, folder_id: str, filename: str, mime_ty
         f"Content-Type: {mime_type}\r\n\r\n"
     ).encode() + file_bytes + f"\r\n--{boundary}--\r\n".encode()
 
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     headers = {
         "Authorization": f"Bearer {access_token}",
         "Content-Type": f"multipart/related; boundary={boundary}",
@@ -678,9 +922,16 @@ class VideoScriptRequest(BaseModel):
 
 
 @app.post("/creation/generate-video")
+<<<<<<< HEAD
 async def generate_video_endpoint(req: dict):
     refiner_data = req.get("refiner_data", {}) or {}
     tenant_slug = req.get("tenant_slug", "mugo")
+=======
+async def generate_video_endpoint(request: Request, req: dict):
+    refiner_data = req.get("refiner_data", {}) or {}
+    tenant_slug = req.get("tenant_slug", "mugo")
+    _enforce_tenant_access(request, tenant_slug)
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     engine = (req.get("engine") or refiner_data.get("engine") or "kling").lower()
 
     if engine == "veo" and bool(req.get("preview_veo_json")):
@@ -801,21 +1052,38 @@ async def generate_video_endpoint(req: dict):
     
 # Endpoint para o Dashboard de Inteligência
 @app.post("/planning/dashboard-data")
+<<<<<<< HEAD
 async def dashboard_data_endpoint(req: dict):
     tenant_slug = req.get("tenant_slug", "mugo")
+=======
+async def dashboard_data_endpoint(request: Request, req: dict):
+    tenant_slug = req.get("tenant_slug", "mugo")
+    _enforce_tenant_access(request, tenant_slug)
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     return get_social_intelligence(tenant_slug)
 
 # Endpoint para a geração mágica do Grid
 @app.post("/SocialMedia/grid/generate")
+<<<<<<< HEAD
 async def generate_grid_endpoint(req: dict):
     tenant_slug = req.get("tenant_slug", "mugo")
+=======
+async def generate_grid_endpoint(request: Request, req: dict):
+    tenant_slug = req.get("tenant_slug", "mugo")
+    _enforce_tenant_access(request, tenant_slug)
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     context = req.get("context", "")
     grid_data = await generate_social_grid(tenant_slug, context)
     return {"grid": grid_data}
 
 
 @app.post("/SocialMedia/chat")
+<<<<<<< HEAD
 async def social_media_chat(req: dict):
+=======
+async def social_media_chat(request: Request, req: dict):
+    _enforce_tenant_access(request, req.get("tenant_slug", "mugo"))
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     response = chat_with_planner(
         history=req.get("history", []),
         current_grid_context=req.get("grid_context", ""),
@@ -908,15 +1176,26 @@ def _grid_path(tenant_slug: str, year: int, month: int) -> Path:
     return DATA_DIR / f"grid_{safe}_{year}_{month}.json"
 
 @app.get("/SocialMedia/grid")
+<<<<<<< HEAD
 async def get_grid(tenant_slug: str, year: int, month: int):
+=======
+async def get_grid(request: Request, tenant_slug: str, year: int, month: int):
+    _enforce_tenant_access(request, tenant_slug)
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     path = _grid_path(tenant_slug, year, month)
     if not path.exists():
         return {"grid": INITIAL_CONTENT_GRID}  # ou [] se preferir
     return {"grid": json.loads(path.read_text(encoding="utf-8"))}
 
 @app.post("/SocialMedia/grid/save")
+<<<<<<< HEAD
 async def save_grid(req: dict):
     tenant_slug = req.get("tenant_slug", "mugo")
+=======
+async def save_grid(request: Request, req: dict):
+    tenant_slug = req.get("tenant_slug", "mugo")
+    _enforce_tenant_access(request, tenant_slug)
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     year = int(req.get("year"))
     month = int(req.get("month"))
     grid = req.get("grid", [])
@@ -929,7 +1208,12 @@ async def save_grid(req: dict):
     return {"ok": True}
 
 @app.post("/api/media/upload-base64")
+<<<<<<< HEAD
 async def upload_base64(req: UploadBase64Request):
+=======
+async def upload_base64(request: Request, req: UploadBase64Request):
+    _enforce_tenant_access(request, req.tenant_slug)
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     if not req.data_url:
         raise HTTPException(status_code=400, detail="data_url vazio.")
 
@@ -968,15 +1252,26 @@ def _events_path(tenant_slug: str, year: int, month: int) -> Path:
     return DATA_DIR / f"events_{safe}_{year}_{month}.json"
 
 @app.get("/SocialMedia/events")
+<<<<<<< HEAD
 async def get_events(tenant_slug: str, year: int, month: int):
+=======
+async def get_events(request: Request, tenant_slug: str, year: int, month: int):
+    _enforce_tenant_access(request, tenant_slug)
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     path = _events_path(tenant_slug, year, month)
     if not path.exists():
         return {"events": []}
     return {"events": json.loads(path.read_text(encoding="utf-8"))}
 
 @app.post("/SocialMedia/events/update-day")
+<<<<<<< HEAD
 async def update_event_day(req: dict):
     tenant_slug = req.get("tenant_slug", "mugo")
+=======
+async def update_event_day(request: Request, req: dict):
+    tenant_slug = req.get("tenant_slug", "mugo")
+    _enforce_tenant_access(request, tenant_slug)
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     year = int(req.get("year"))
     month = int(req.get("month"))
     event_id = int(req.get("event_id"))
@@ -1001,8 +1296,14 @@ async def update_event_day(req: dict):
     return {"ok": True}
 
 @app.post("/SocialMedia/events/save")
+<<<<<<< HEAD
 async def save_events(req: dict):
     tenant_slug = req.get("tenant_slug", "mugo")
+=======
+async def save_events(request: Request, req: dict):
+    tenant_slug = req.get("tenant_slug", "mugo")
+    _enforce_tenant_access(request, tenant_slug)
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     year = int(req.get("year"))
     month = int(req.get("month"))
     events = req.get("events") or []
@@ -1054,11 +1355,19 @@ class BriefingRequest(BaseModel):
     raw_input: str
 
 class StrategyRequest(BaseModel):
+<<<<<<< HEAD
+=======
+    tenant_slug: Optional[str] = None
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     brand: str
     objective: str
     target_audience: str
 
 class PlanningChatRequest(BaseModel):
+<<<<<<< HEAD
+=======
+    tenant_slug: Optional[str] = None
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     brand: str
     message: str
     current_strategy: str
@@ -1070,6 +1379,10 @@ class SocialRequest(BaseModel):
     platform: str
 
 class CopyChatRequest(BaseModel):
+<<<<<<< HEAD
+=======
+    tenant_slug: Optional[str] = None
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     client: str
     message: str
     briefing: str
@@ -1085,6 +1398,51 @@ class PromptPreviewRequest(BaseModel):
     tenant_slug: str
     media_type: str
     raw_data: Dict
+
+<<<<<<< HEAD
+class GenerateMediaRequest(BaseModel):
+    tenant_slug: str
+    media_type: str  # "image" | "video"
+    engine: str
+    prompt: str
+    negative_prompt: Optional[str] = ""
+
+    width: int
+    height: int
+
+    # ✅ Referência principal (usada para vídeo Veo como 1º frame)
+    ref_image: Optional[str] = None
+
+    # ✅ Multi-imagem (Nana Banana)
+    face_image: Optional[str] = None
+    body_image: Optional[str] = None
+    product_image: Optional[str] = None
+    clothing_image: Optional[str] = None
+    style_image: Optional[str] = None
+
+    # ✅ Áudio (Veo) (por enquanto não roteando; só armazenado)
+    audio_base64: Optional[str] = None
+    tts_text: Optional[str] = None
+    tts_voice: Optional[str] = None
+    tts_tone: Optional[str] = None
+
+    translate: bool = False
+    refiner_data: Optional[Dict[str, Any]] = None
+
+=======
+class PlanRequest(BaseModel):
+    tenant_slug: Optional[str] = None
+    title: Optional[str] = None
+    raw_input: Optional[str] = None
+    objective: Optional[str] = None
+    brief: Optional[str] = None
+    date: Optional[str] = None
+
+class ProdChatRequest(BaseModel):
+    tenant_slug: Optional[str] = None
+    message: str
+    brief_context: Optional[str] = ""
+    suppliers: Optional[List[Dict[str, Any]]] = None
 
 class GenerateMediaRequest(BaseModel):
     tenant_slug: str
@@ -1115,12 +1473,19 @@ class GenerateMediaRequest(BaseModel):
     translate: bool = False
     refiner_data: Optional[Dict[str, Any]] = None
 
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
 # ==========================================
 # 🔄 ROTAS: BIBLIOTECA E APROVAÇÃO
 # ==========================================
 @app.get("/library/assets")
+<<<<<<< HEAD
 async def get_library_assets(tenant_slug: str = "all"):
     print(f"📁 Buscando arquivos para o cliente: {tenant_slug}")
+=======
+async def get_library_assets(request: Request, tenant_slug: str = "all"):
+    print(f"📁 Buscando arquivos para o cliente: {tenant_slug}")
+    _enforce_tenant_access(request, tenant_slug)
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     if tenant_slug == "all":
         return {"assets": ASSETS_DB}
     tenant_assets = [asset for asset in ASSETS_DB if asset["tenant_slug"] == tenant_slug]
@@ -1193,9 +1558,17 @@ async def drive_oauth_callback(code: str, state: str):
 
 @app.post("/library/upload")
 async def library_upload(
+<<<<<<< HEAD
     tenant_slug: str = Form(...),
     file: UploadFile = File(...),
 ):
+=======
+    request: Request,
+    tenant_slug: str = Form(...),
+    file: UploadFile = File(...),
+):
+    _enforce_tenant_access(request, tenant_slug)
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     cfg = _get_tenant_storage_config(tenant_slug)
     provider = (cfg.get("provider") or "gdrive").lower()
 
@@ -1243,7 +1616,11 @@ async def library_upload(
     return {"ok": True, "file_id": file_id, "provider": "gdrive"}
 
 @app.post("/library/delete")
+<<<<<<< HEAD
 async def library_delete(asset_id: int = Form(...)):
+=======
+async def library_delete(request: Request, asset_id: int = Form(...)):
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     if not SUPABASE_URL:
         raise HTTPException(status_code=500, detail="Supabase não configurado.")
     fetch_url = f"{SUPABASE_URL}/rest/v1/library?select=id,tenant_slug,url,provider&id=eq.{asset_id}&limit=1"
@@ -1251,6 +1628,10 @@ async def library_delete(asset_id: int = Form(...)):
     if not data:
         raise HTTPException(status_code=404, detail="Asset não encontrado.")
     asset = data[0]
+<<<<<<< HEAD
+=======
+    _enforce_tenant_access(request, asset.get("tenant_slug"))
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     provider = (asset.get("provider") or "gdrive").lower()
     url = asset.get("url") or ""
 
@@ -1275,14 +1656,25 @@ async def library_delete(asset_id: int = Form(...)):
     return {"ok": True}
 
 @app.get("/approval/jobs")
+<<<<<<< HEAD
 async def get_approval_jobs(tenant_slug: str = "all"):
     print("📋 Buscando lista de aprovações...")
+=======
+async def get_approval_jobs(request: Request, tenant_slug: str = "all"):
+    print("📋 Buscando lista de aprovações...")
+    _enforce_tenant_access(request, tenant_slug)
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     if tenant_slug == "all":
         return APPROVALS_DB
     return [job for job in APPROVALS_DB if job.get("tenant_slug") == tenant_slug]
 
 @app.post("/library/assets")
+<<<<<<< HEAD
 async def save_library_asset(req: SaveAssetRequest):
+=======
+async def save_library_asset(request: Request, req: SaveAssetRequest):
+    _enforce_tenant_access(request, req.tenant_slug)
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     print(f"💾 Salvando arte final na biblioteca: {req.client}")
     image_url = save_base64_image(req.image_base64, req.tenant_slug)
     new_asset = {
@@ -1299,7 +1691,12 @@ async def save_library_asset(req: SaveAssetRequest):
     return {"status": "success", "asset": new_asset}
 
 @app.post("/approval/jobs")
+<<<<<<< HEAD
 async def save_approval_job(req: SaveApprovalRequest):
+=======
+async def save_approval_job(request: Request, req: SaveApprovalRequest):
+    _enforce_tenant_access(request, req.tenant_slug)
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     print(f"🚀 Enviando arte para aprovação do cliente: {req.client}")
     image_url = save_base64_image(req.image_base64, req.tenant_slug)
     now_str = time.strftime("%d %b, %H:%M")
@@ -1323,20 +1720,35 @@ async def save_approval_job(req: SaveApprovalRequest):
     return {"status": "success", "job": new_job}
 
 @app.get("/atendimento/tickets")
+<<<<<<< HEAD
 async def get_tickets(tenant_slug: str = "all"):
+=======
+async def get_tickets(request: Request, tenant_slug: str = "all"):
+    _enforce_tenant_access(request, tenant_slug)
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     if tenant_slug == "all":
         return {"tickets": TICKETS_DB}
     return {"tickets": [t for t in TICKETS_DB if t["tenant_slug"] == tenant_slug]}
 
 @app.post("/atendimento/tickets")
+<<<<<<< HEAD
 async def create_ticket(ticket: Ticket):
+=======
+async def create_ticket(request: Request, ticket: Ticket):
+    _enforce_tenant_access(request, ticket.tenant_slug)
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     new_t = ticket.model_dump()
     new_t["id"] = len(TICKETS_DB) + 1
     TICKETS_DB.append(new_t)
     return {"status": "created", "ticket": new_t}
 
 @app.post("/atendimento/agent")
+<<<<<<< HEAD
 async def atendimento_agent(req: AtendimentoAgentRequest):
+=======
+async def atendimento_agent(request: Request, req: AtendimentoAgentRequest):
+    _enforce_tenant_access(request, req.tenant_slug)
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     try:
         result = await process_atendimento_briefing(
             tenant_slug=req.tenant_slug,
@@ -1491,8 +1903,16 @@ async def create_tenant_context_disk(req: Optional[Dict[str, Any]] = None):
 # 🧠 AGENTES DE PLANEJAMENTO E ESTRATÉGIA
 # ==========================================
 @app.post("/planning/agent")
+<<<<<<< HEAD
 async def planning_agent(req: StrategyRequest):
     print(f"🧠 CSO Agent desenhando a master strategy para: {req.brand}")
+=======
+async def planning_agent(request: Request, req: StrategyRequest):
+    print(f"🧠 CSO Agent desenhando a master strategy para: {req.brand}")
+    tenant_slug = getattr(req, "tenant_slug", None)
+    if tenant_slug:
+        _enforce_tenant_access(request, tenant_slug)
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
 
     if client is None:
         return {
@@ -1546,8 +1966,15 @@ FORMATO (JSON STRICT):
         }
 
 @app.post("/planning/chat")
+<<<<<<< HEAD
 async def planning_chat_agent(req: PlanningChatRequest):
     print(f"🥊 CSO Copilot debatendo para: {req.brand}")
+=======
+async def planning_chat_agent(request: Request, req: PlanningChatRequest):
+    print(f"🥊 CSO Copilot debatendo para: {req.brand}")
+    if req.tenant_slug:
+        _enforce_tenant_access(request, req.tenant_slug)
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
 
     if client is None:
         return {"response": "OPENAI_API_KEY não configurada."}
@@ -1582,9 +2009,20 @@ REGRAS:
         return {"response": "Estou offline da API. Me reconecte para continuarmos."}
 
 @app.post("/social/agent")
+<<<<<<< HEAD
 async def social_agent(req: SocialRequest):
     print(f"📱 Social Agent criando pauta estratégica para: {req.client}")
 
+=======
+async def social_agent(request: Request, req: SocialRequest):
+    print(f"📱 Social Agent criando pauta estratégica para: {req.client}")
+
+    tenant_slug = req.client
+    if not tenant_slug:
+        raise HTTPException(status_code=400, detail="tenant_slug é obrigatório.")
+    _enforce_tenant_access(request, tenant_slug)
+
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     if client is None:
         return {"week_plan": [{"day": "Erro", "format": "Offline", "idea": "OPENAI_API_KEY não configurada.", "caption_hook": "Configure a chave."}]}
 
@@ -1619,8 +2057,16 @@ Retorne JSON STRICT:
         return {"week_plan": [{"day": "Erro", "format": "Aviso", "idea": "Falha no servidor.", "caption_hook": "Tente novamente."}]}
 
 @app.post("/copy/chat")
+<<<<<<< HEAD
 async def copy_chat_agent(req: CopyChatRequest):
     print(f"✍️ Criando Copy para a marca: {req.client}")
+=======
+async def copy_chat_agent(request: Request, req: CopyChatRequest):
+    print(f"✍️ Criando Copy para a marca: {req.client}")
+    if not req.tenant_slug:
+        raise HTTPException(status_code=400, detail="tenant_slug é obrigatório.")
+    _enforce_tenant_access(request, req.tenant_slug)
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
 
     if client is None:
         return {"response": "OPENAI_API_KEY não configurada."}
@@ -1902,13 +2348,24 @@ def _inject_quality_protocols(prompt: str) -> str:
 # ==========================================
 
 @app.post("/creation/preview-prompt")
+<<<<<<< HEAD
 async def preview_prompt_agent(req: PromptPreviewRequest):
     """Gera o preview visual do prompt refinado antes de gastar créditos."""
+=======
+async def preview_prompt_agent(request: Request, req: PromptPreviewRequest):
+    """Gera o preview visual do prompt refinado antes de gastar créditos."""
+    _enforce_tenant_access(request, req.tenant_slug)
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     optimized = prepare_refined_prompt(req.dict(), req.media_type)
     return {"prompt": optimized}
 
 @app.post("/creation/generate-image")
+<<<<<<< HEAD
 async def generate_media(req: GenerateMediaRequest):
+=======
+async def generate_media(request: Request, req: GenerateMediaRequest):
+    _enforce_tenant_access(request, req.tenant_slug)
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     print(f"🚀 Iniciando Geração: {req.engine} | Tipo: {req.media_type}")
 
     # --- 1. REFINAMENTO DE PROMPT (O FIM DO CÓDIGO DE MÁQUINA) ---
@@ -2044,6 +2501,7 @@ async def generate_media(req: GenerateMediaRequest):
 
 # --- ROTAS DE PRODUÇÃO ---
 @app.get("/library/suppliers")
+<<<<<<< HEAD
 async def get_suppliers(tenant_slug: str = "mugo"):
     return [
         {"id": 1, "name": "Locadora Luz e Cia", "specialty": "Iluminação"},
@@ -2056,14 +2514,119 @@ async def get_suppliers(tenant_slug: str = "mugo"):
 @app.post("/production/plan")
 async def generate_production_plan(req: PlanRequest):
     print(f"🎬 Gerando plano de produção para data: {req.date}")
+=======
+async def get_suppliers(request: Request, tenant_slug: str = "mugo"):
+    _enforce_tenant_access(request, tenant_slug)
+    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
+        return []
+    url = f"{SUPABASE_URL}/rest/v1/suppliers?select=*&tenant_slug=eq.{tenant_slug}&order=created_at.desc"
+    try:
+        return _supabase_get(url)
+    except Exception as e:
+        print(f"Erro ao buscar fornecedores: {e}")
+        return []
+
+@app.post("/admin/suppliers")
+async def upsert_suppliers(request: Request, req: Dict[str, Any]):
+    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
+        raise HTTPException(status_code=500, detail="Supabase não configurado.")
+    tenant_slug = (req.get("tenant_slug") or "").strip()
+    if not tenant_slug:
+        raise HTTPException(status_code=400, detail="tenant_slug é obrigatório.")
+    _enforce_tenant_access(request, tenant_slug)
+    name = (req.get("name") or "").strip()
+    specialty = (req.get("specialty") or "").strip()
+    if not name or not specialty:
+        raise HTTPException(status_code=400, detail="name e specialty são obrigatórios.")
+    try:
+        cost_base = float(req.get("cost_base") or 0)
+    except Exception:
+        raise HTTPException(status_code=400, detail="cost_base inválido.")
+
+    payload = {
+        "tenant_slug": tenant_slug,
+        "name": name,
+        "category": req.get("category"),
+        "specialty": specialty,
+        "cnpj_cpf": req.get("cnpj_cpf"),
+        "email": req.get("email"),
+        "phone": req.get("phone"),
+        "address": req.get("address"),
+        "cost_base": round(cost_base, 2),
+    }
+    supplier_id = req.get("id")
+    try:
+        if supplier_id:
+            url = f"{SUPABASE_URL}/rest/v1/suppliers?id=eq.{supplier_id}"
+            _supabase_patch(url, payload)
+            return {**payload, "id": supplier_id}
+        insert_url = f"{SUPABASE_URL}/rest/v1/suppliers"
+        result = _supabase_post(insert_url, payload)
+        return result[0] if isinstance(result, list) and result else payload
+    except Exception as e:
+        print(f"Erro ao salvar fornecedor: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/admin/suppliers/{supplier_id}")
+async def delete_supplier(request: Request, supplier_id: str):
+    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
+        raise HTTPException(status_code=500, detail="Supabase não configurado.")
+    tenant_slug = request.query_params.get("tenant_slug")
+    if not tenant_slug:
+        raise HTTPException(status_code=400, detail="tenant_slug é obrigatório.")
+    _enforce_tenant_access(request, tenant_slug)
+    try:
+        del_url = f"{SUPABASE_URL}/rest/v1/suppliers?id=eq.{supplier_id}"
+        requests.delete(del_url, headers=_supabase_headers(), timeout=30)
+        return {"status": "ok"}
+    except Exception as e:
+        print(f"Erro ao remover fornecedor: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/production/plan")
+async def generate_production_plan(request: Request, req: PlanRequest):
+    effective_date = req.date or datetime.now().strftime("%Y-%m-%d")
+    brief = req.brief or req.raw_input or req.objective or ""
+    tenant_slug = req.tenant_slug or "mugo"
+    _enforce_tenant_access(request, tenant_slug)
+    print(f"🎬 Gerando plano de produção para data: {effective_date}")
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
 
     if client is None:
         return {"error": "OPENAI_API_KEY não configurada."}
 
+<<<<<<< HEAD
     system_prompt = f"""
 Você é um Produtor Executivo Sênior.
 BRIEF: {req.brief}
 DATA: {req.date}
+=======
+    def _load_production_prompt(slug: str) -> str:
+        root = Path(__file__).resolve().parent / "tenant_context"
+        candidates = [
+            root / slug / "prompts" / "producao.md",
+            root / slug / "prompt" / "producao.md",
+            root / "_default" / "prompts" / "producao.md",
+            root / "_default" / "prompt" / "producao.md",
+        ]
+        for path in candidates:
+            if path.exists():
+                return path.read_text(encoding="utf-8")
+        return ""
+
+    tenant_prompt = _load_production_prompt(tenant_slug)
+    system_prompt = f"""
+Você é um Produtor Executivo Sênior.
+Responda sempre em português do Brasil. Não use termos em inglês.
+
+BRIEF: {brief}
+DATA: {effective_date}
+
+Diretrizes do tenant:
+{tenant_prompt}
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
 
 Retorne JSON STRICT com:
 timeline, staff_needs, budget_lines, risks
@@ -2082,6 +2645,7 @@ timeline, staff_needs, budget_lines, risks
         return {"error": str(e)}
 
 @app.post("/production/chat")
+<<<<<<< HEAD
 async def production_chat(req: ProdChatRequest):
     if client is None:
         return {"response": "OPENAI_API_KEY não configurada."}
@@ -2089,6 +2653,27 @@ async def production_chat(req: ProdChatRequest):
     system_prompt = f"""
 Você é o Assistente de Produção RTV/Eventos.
 Contexto: {req.brief_context}
+=======
+async def production_chat(request: Request, req: ProdChatRequest):
+    if req.tenant_slug:
+        _enforce_tenant_access(request, req.tenant_slug)
+    if client is None:
+        return {"response": "OPENAI_API_KEY não configurada."}
+
+    suppliers_text = ""
+    if req.suppliers:
+        try:
+            suppliers_text = "\nFornecedores disponíveis:\n" + "\n".join(
+                f"- {s.get('name')} ({s.get('specialty')})" for s in req.suppliers
+            )
+        except Exception:
+            suppliers_text = ""
+
+    system_prompt = f"""
+Você é o Assistente de Produção RTV/Eventos.
+Contexto: {req.brief_context}
+{suppliers_text}
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
 Responda direto, focado em logística e orçamento.
 """
     try:
@@ -2111,7 +2696,12 @@ async def health_check():
 # ROTAS DE MIDIA
 # =====================================
 @app.get("/media/dashboard/{tenant_slug}")
+<<<<<<< HEAD
 async def get_media_dashboard(tenant_slug: str):
+=======
+async def get_media_dashboard(request: Request, tenant_slug: str):
+    _enforce_tenant_access(request, tenant_slug)
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     # ✅ seu exemplo tinha meta_data/google_data não definidos -> stub seguro
     return {
         "exec_data": [
@@ -2124,6 +2714,7 @@ async def get_media_dashboard(tenant_slug: str):
 # 🗑️ ROTAS DE EXCLUSÃO (BIBLIOTECA E APROVAÇÃO)
 # ==========================================
 @app.delete("/approval/jobs/{job_id}")
+<<<<<<< HEAD
 async def delete_approval_job(job_id: int):
     global APPROVALS_DB
     APPROVALS_DB = [job for job in APPROVALS_DB if job.get("id") != job_id]
@@ -2146,6 +2737,36 @@ async def root():
         "docs": "/docs",
         "health": "/health"
     }
+=======
+async def delete_approval_job(request: Request, job_id: int, tenant_slug: str = "all"):
+    if tenant_slug != "all":
+        _enforce_tenant_access(request, tenant_slug)
+    global APPROVALS_DB
+    if tenant_slug == "all":
+        APPROVALS_DB = [job for job in APPROVALS_DB if job.get("id") != job_id]
+    else:
+        APPROVALS_DB = [
+            job for job in APPROVALS_DB
+            if not (job.get("id") == job_id and job.get("tenant_slug") == tenant_slug)
+        ]
+    return {"status": "success", "message": "Arte excluída das Aprovações!"}
+
+@app.delete("/library/assets/{asset_id}")
+async def delete_library_asset(request: Request, asset_id: str, tenant_slug: str = "all"):
+    if tenant_slug != "all":
+        _enforce_tenant_access(request, tenant_slug)
+    # ✅ você usava LIBRARY_DB que não existe -> usando ASSETS_DB
+    global ASSETS_DB
+    if tenant_slug == "all":
+        ASSETS_DB = [asset for asset in ASSETS_DB if str(asset.get("id")) != str(asset_id)]
+    else:
+        ASSETS_DB = [
+            asset for asset in ASSETS_DB
+            if not (str(asset.get("id")) == str(asset_id) and asset.get("tenant_slug") == tenant_slug)
+        ]
+    return {"status": "success", "message": "Arte excluída da Biblioteca!"}
+
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
 if __name__ == "__main__":
     import uvicorn
 

@@ -1,0 +1,42 @@
+[
+  {
+    "platform": "Instagram (Feed)",
+    "pillar": "Institucional",
+    "w1": "História da empresa em 3 fatos.",
+    "w2": "Missão e valores em destaque.",
+    "w3": "Equipe em ação: quem somos.",
+    "w4": "Parcerias que nos fortalecem."
+  },
+  {
+    "platform": "Instagram (Stories)",
+    "pillar": "Produto/Servico",
+    "w1": "Novidade da semana: produto X.",
+    "w2": "Como usar o serviço Y em 3 passos.",
+    "w3": "Feedback de cliente sobre produto Z.",
+    "w4": "Demonstração ao vivo do produto."
+  },
+  {
+    "platform": "TikTok / Reels",
+    "pillar": "Educacao",
+    "w1": "Dica rápida sobre uso do produto.",
+    "w2": "Tutorial: 1 minuto para aprender algo novo.",
+    "w3": "Curiosidade do setor em 30 segundos.",
+    "w4": "Erro comum e como evitá-lo."
+  },
+  {
+    "platform": "LinkedIn",
+    "pillar": "Bastidores",
+    "w1": "Dia a dia no escritório.",
+    "w2": "Processo criativo: como fazemos.",
+    "w3": "Entrevista com colaborador.",
+    "w4": "Planejamento estratégico em ação."
+  },
+  {
+    "platform": "Instagram (Feed)",
+    "pillar": "Prova social",
+    "w1": "Depoimento de cliente satisfeito.",
+    "w2": "Estudo de caso: resultado alcançado.",
+    "w3": "Reconhecimento de mercado.",
+    "w4": "História de sucesso com nosso produto."
+  }
+]

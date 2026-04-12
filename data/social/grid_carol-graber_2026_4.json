@@ -1,5 +1,6 @@
 [
   {
+<<<<<<< HEAD
     "w1": "Descubra o significado do número 7 e sua influência.",
     "w2": "Como o Ano Pessoal impacta suas decisões?",
     "w3": "Entenda os ciclos numerológicos e suas fases.",
@@ -30,5 +31,37 @@
     "w4": "Como vivemos a numerologia em nossa rotina.",
     "pillar": "Conexão",
     "platform": "LinkedIn"
+=======
+    "platform": "Instagram (Feed)",
+    "pillar": "Educativo",
+    "w1": "Explique o significado dos números mestres.",
+    "w2": "Como calcular seu Ano Pessoal.",
+    "w3": "Importância dos ciclos numerológicos.",
+    "w4": "Dicas para aproveitar seu Ano Pessoal."
+  },
+  {
+    "platform": "Instagram (Stories)",
+    "pillar": "Maternidade/Relacionamentos",
+    "w1": "Benefícios do Mapa Infantil.",
+    "w2": "O que é Sinastria Amorosa?",
+    "w3": "Conexão familiar através da numerologia.",
+    "w4": "Numerologia para fortalecer relações."
+  },
+  {
+    "platform": "TikTok / Reels",
+    "pillar": "Inspiração/Venda",
+    "w1": "Por que fazer uma leitura de mapa?",
+    "w2": "Numerologia na transição de carreira.",
+    "w3": "Histórias de sucesso com numerologia.",
+    "w4": "Como a numerologia pode mudar sua vida."
+  },
+  {
+    "platform": "LinkedIn",
+    "pillar": "Conexão",
+    "w1": "Bastidores do nosso trabalho.",
+    "w2": "Estilo de vida consciente com numerologia.",
+    "w3": "A importância do autoconhecimento.",
+    "w4": "Como aplicamos numerologia no dia a dia."
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
   }
 ]

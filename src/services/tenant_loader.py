@@ -31,8 +31,14 @@ def _read_json(path: Path) -> Optional[Dict[str, Any]]:
         return None
     try:
         return json.loads(content)
+<<<<<<< HEAD
     except json.JSONDecodeError:
         raise ValueError(f"JSON inválido em: {path.as_posix()}")
+=======
+    except json.JSONDecodeError as e:
+        print(f"⚠️ JSON inválido em: {path.as_posix()} ({e})")
+        return None
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
 
 
 def _merge_dict(base: Dict[str, Any], override: Any) -> Dict[str, Any]:

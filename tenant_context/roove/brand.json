@@ -1,0 +1,31 @@
+{
+  "brand_name": "Roove",
+  "segment": "Wearable Skincare / Skinware",
+  "slogan": "Sua nova rotina de Skinware",
+  "mission": "Integrar tecnologia têxtil, estilo e autocuidado em produtos que elevam a performance e a qualidade de vida das mulheres, transformando o vestir em um ritual de cuidado diário.",
+  "vision": "Ser a marca referência em wearable skincare, reconhecida por unir design sofisticado, inovação têxtil e bem-estar inteligente — inspirando um novo jeito de viver, se mover e se cuidar.",
+  "tone_of_voice": "Sofisticado, inovador, autêntico e inspirador. Comunica alta tecnologia têxtil com a leveza do bem-estar. É minimalista e direto, valorizando a sensação tátil e a vida real.",
+  "core_values": [
+    "Inovação Funcional",
+    "Estética Atemporal",
+    "Bem-estar",
+    "Equilíbrio (Performance e Pausa)",
+    "Autocuidado"
+  ],
+  "target_audience": "Mulheres que vivem no ritmo da vida real (intensa, multifacetada e em movimento) e buscam aliar alta performance, estética e cuidado com o corpo em uma única solução.",
+  "main_topics": ["Wearable Skincare", "Tecnologia Têxtil", "Bodywear/Bodycare", "Movimento e Pausa", "Rotina Real"],
+  "brand_pillars": [
+    {
+      "name": "Inovação & Tecnologia",
+      "description": "Precisão e tecnologia das peças. Evidenciar funcionalidades, acabamentos e performance com estética limpa, moderna e minimalista."
+    },
+    {
+      "name": "Cuidado com a Pele",
+      "description": "O contato da pele com o tecido. Transmitir conforto, suavidade, sensação tátil e saúde, reforçando o universo de bodycare."
+    },
+    {
+      "name": "Cotidiano & Movimento",
+      "description": "Pessoas em movimento, integradas à vida real e práticas esportivas. Poses espontâneas, dinâmicas, fluidas e autênticas."
+    }
+  ]
+}

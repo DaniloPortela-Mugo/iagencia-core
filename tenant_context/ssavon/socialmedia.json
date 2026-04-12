@@ -1,0 +1,26 @@
+{
+  "default_formats": ["Post Estático", "Carrossel", "Reels/TikTok", "Stories", "Artigo/Blog"],
+  "default_tones": ["Profissional", "Divertido", "Urgente/Varejo", "Educativo", "Inspiracional"],
+
+  "content_pillars": [
+    "Produto e aromas",
+    "Rituais e bem-estar",
+    "Decoração e casa",
+    "Presentes e datas",
+    "Institucional e bastidores"
+  ],
+
+  "weekly_logic": {
+    "w1_start_day": 5,
+    "w2_start_day": 12,
+    "w3_start_day": 19,
+    "w4_start_day": 26
+  },
+
+  "platforms": [
+    "Instagram (Feed)",
+    "Instagram (Stories)",
+    "TikTok / Reels",
+    "LinkedIn"
+  ]
+}

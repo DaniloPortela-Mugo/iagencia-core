@@ -4,6 +4,18 @@ from openai import OpenAI
 from src.services.brand_context import build_brand_context_text
 from src.services.tenant_keys import get_tenant_api_key
 
+<<<<<<< HEAD
+=======
+
+def _clean_key(value: str | None):
+    if not value:
+        return None
+    key = value.strip()
+    if (key.startswith('"') and key.endswith('"')) or (key.startswith("'") and key.endswith("'")):
+        key = key[1:-1].strip()
+    return key or None
+
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
 def get_client(tenant_slug: str | None = None):
     """Recupera o cliente OpenAI com a chave do tenant (fallback .env)."""
     api_key = None
@@ -11,6 +23,10 @@ def get_client(tenant_slug: str | None = None):
         api_key = get_tenant_api_key(tenant_slug, "openai")
     if not api_key:
         api_key = os.getenv("OPENAI_API_KEY")
+<<<<<<< HEAD
+=======
+    api_key = _clean_key(api_key)
+>>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
     return OpenAI(api_key=api_key) if api_key else None
 
 def load_tenant_context(tenant_slug: str) -> str:

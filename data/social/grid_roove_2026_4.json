@@ -1,0 +1,42 @@
+[
+  {
+    "w1": "História da marca.",
+    "w2": "Missão e valores.",
+    "w3": "Conquistas recentes.",
+    "w4": "Visão de futuro.",
+    "pillar": "Institucional",
+    "platform": "Instagram (Feed)"
+  },
+  {
+    "w1": "Destaque do produto do mês.",
+    "w2": "Benefícios exclusivos.",
+    "w3": "Demonstração em uso.",
+    "w4": "Promoção especial.",
+    "pillar": "Produto/Servico",
+    "platform": "Instagram (Stories)"
+  },
+  {
+    "w1": "Dicas rápidas de uso.",
+    "w2": "Como escolher o melhor produto.",
+    "w3": "Desmistificando mitos.",
+    "w4": "Tutorial passo a passo.",
+    "pillar": "Educacao",
+    "platform": "TikTok / Reels"
+  },
+  {
+    "w1": "Dia a dia na empresa.",
+    "w2": "Entrevista com colaboradores.",
+    "w3": "Processo criativo.",
+    "w4": "Desafios enfrentados.",
+    "pillar": "Bastidores",
+    "platform": "LinkedIn"
+  },
+  {
+    "w1": "Depoimento de cliente.",
+    "w2": "Case de sucesso.",
+    "w3": "Avaliações positivas.",
+    "w4": "História de transformação.",
+    "pillar": "Prova social",
+    "platform": "Instagram (Feed)"
+  }
+]
