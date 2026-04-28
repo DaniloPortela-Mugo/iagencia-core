@@ -5,8 +5,6 @@ from typing import Optional
 from .crypto_utils import decrypt_secret
 
 
-<<<<<<< HEAD
-=======
 def _clean_key(value: Optional[str]) -> Optional[str]:
     if not value:
         return None
@@ -16,7 +14,6 @@ def _clean_key(value: Optional[str]) -> Optional[str]:
     return key or None
 
 
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
 def _supabase_headers() -> Optional[dict]:
     url = os.getenv("SUPABASE_URL")
     key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
@@ -55,12 +52,8 @@ def get_tenant_api_key(tenant_slug: str, provider: str) -> Optional[str]:
             return None
         key = data[0].get("api_key")
         if isinstance(key, str) and key.strip():
-<<<<<<< HEAD
-            return decrypt_secret(key) or None
-=======
             decrypted = decrypt_secret(key)
             return _clean_key(decrypted)
->>>>>>> 7b559d8 (Atualização: novos arquivos e ajustes no projeto)
         return None
     except Exception:
         return None
