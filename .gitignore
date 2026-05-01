@@ -45,3 +45,4 @@ Thumbs.db
 *.crt
 credentials.json
 secrets.json
+data/system/internal_users.json

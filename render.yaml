@@ -5,15 +5,29 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
+      - key: API_PUBLIC_BASE
+        sync: false
       - key: OPENAI_API_KEY
         sync: false
       - key: GOOGLE_API_KEY
         sync: false
       - key: GOOGLE_SEARCH_CX
         sync: false
+      - key: REPLICATE_API_TOKEN
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: TAVILY_API_KEY
+        sync: false
       - key: SUPABASE_URL
         sync: false
+      - key: SUPABASE_KEY
+        sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: FLASK_SECRET_KEY
+        sync: false
+      - key: IAGENCIA_CRYPTO_KEY
         sync: false
       - key: GOOGLE_DRIVE_CLIENT_ID
         sync: false

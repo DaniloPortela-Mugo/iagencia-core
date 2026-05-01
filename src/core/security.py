@@ -2,26 +2,20 @@ import os
 from supabase import create_client, Client
 
 class SecurityManager:
-    # --- CREDENCIAIS HARDCODED (Para destravar o Login) ---
-    url: str = "https://tcvqsiwgkazwskdsbgqi.supabase.co"
-    
-    # COLE SUA CHAVE INTEIRA AQUI DENTRO DAS ASPAS:
-    key: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjdnFzaXdna2F6d3NrZHNiZ3FpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxMDg1MjUsImV4cCI6MjA4NDY4NDUyNX0.71cU33-Ha7Iz19rQB6UhHSLHawhZ5en7WXWKUI-k988" 
-    
-    # -----------------------------------------------------
+    url: str = os.getenv("SUPABASE_URL", "")
+    key: str = os.getenv("SUPABASE_ANON_KEY") or os.getenv("SUPABASE_KEY", "")
 
     db: Client = None
 
-    # Tenta conectar com as credenciais acima
     if url and key:
         try:
             db = create_client(url, key)
-            print(f"✅ Conexão Direta com Supabase realizada! URL: {url}")
+            print(f"✅ Supabase conectado.")
         except Exception as e:
             print(f"❌ Erro ao conectar no Supabase: {e}")
             db = None
     else:
-        print("❌ ERRO: URL ou KEY estão vazias no código.")
+        print("❌ ERRO: SUPABASE_URL ou SUPABASE_ANON_KEY não definidos no ambiente.")
 
     @staticmethod
     def get_client_config(tenant_slug: str, client_slug: str):

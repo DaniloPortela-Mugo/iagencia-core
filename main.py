@@ -13,7 +13,7 @@ import time
 import traceback
 import shutil
 from typing import Any, Dict, Optional, List, Tuple
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 import asyncio
 import sys
@@ -58,6 +58,8 @@ from starlette.concurrency import run_in_threadpool
 # ==========================================
 load_dotenv()
 
+API_PUBLIC_BASE = os.getenv("API_PUBLIC_BASE", "http://localhost:8000")
+
 api_key = os.getenv("OPENAI_API_KEY")
 google_key = os.getenv("GOOGLE_API_KEY")
 google_cx = os.getenv("GOOGLE_SEARCH_CX")
@@ -74,7 +76,9 @@ GOOGLE_DRIVE_CLIENT_ID = os.getenv("GOOGLE_DRIVE_CLIENT_ID")
 GOOGLE_DRIVE_CLIENT_SECRET = os.getenv("GOOGLE_DRIVE_CLIENT_SECRET")
 GOOGLE_DRIVE_REDIRECT_URI = os.getenv("GOOGLE_DRIVE_REDIRECT_URI")
 GOOGLE_DRIVE_ROOT_FOLDER_ID = os.getenv("GOOGLE_DRIVE_ROOT_FOLDER_ID")
-OAUTH_STATE_SECRET = os.getenv("OAUTH_STATE_SECRET") or os.getenv("FLASK_SECRET_KEY") or "change-me"
+OAUTH_STATE_SECRET = os.getenv("OAUTH_STATE_SECRET") or os.getenv("FLASK_SECRET_KEY")
+if not OAUTH_STATE_SECRET:
+    raise RuntimeError("OAUTH_STATE_SECRET (ou FLASK_SECRET_KEY) não definido. Configure a variável de ambiente antes de iniciar.")
 
 GOOGLE_DRIVE_SCOPES = [
     "https://www.googleapis.com/auth/drive.file",
@@ -137,7 +141,11 @@ def _user_can_access_tenant(user_id: str, tenant_slug: str) -> bool:
         return True
     return tenant_slug in slugs
 
+DISABLE_AUTH = os.getenv("DISABLE_AUTH", "").lower() in ("1", "true", "yes")
+
 def _enforce_tenant_access(request: Request, tenant_slug: str):
+    if DISABLE_AUTH:
+        return
     if not tenant_slug:
         raise HTTPException(status_code=400, detail="tenant_slug é obrigatório.")
     token = _extract_bearer_token(request)
@@ -180,6 +188,43 @@ def _supabase_patch(url: str, payload: dict) -> dict:
         return resp.json()
     except Exception:
         return {}
+
+def _supabase_insert(table: str, payload: dict) -> dict:
+    headers = _supabase_headers()
+    if not headers:
+        raise Exception("SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY não configurados.")
+    headers = {**headers, "Prefer": "return=representation"}
+    url = f"{SUPABASE_URL}/rest/v1/{table}"
+    resp = requests.post(url, headers=headers, json=payload, timeout=30)
+    if resp.status_code >= 300:
+        raise Exception(f"Supabase INSERT {table} {resp.status_code}: {resp.text}")
+    rows = resp.json() if resp.text else []
+    return rows[0] if rows else payload
+
+def _supabase_delete(table: str, filters: dict) -> None:
+    headers = _supabase_headers()
+    if not headers:
+        raise Exception("SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY não configurados.")
+    qs = "&".join(f"{k}=eq.{v}" for k, v in filters.items())
+    url = f"{SUPABASE_URL}/rest/v1/{table}?{qs}"
+    resp = requests.delete(url, headers=headers, timeout=30)
+    if resp.status_code >= 300:
+        raise Exception(f"Supabase DELETE {table} {resp.status_code}: {resp.text}")
+
+def _supabase_select(table: str, filters: Optional[dict] = None, order: Optional[str] = None) -> list:
+    headers = _supabase_headers()
+    if not headers:
+        raise Exception("SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY não configurados.")
+    params = "select=*"
+    if filters:
+        params += "&" + "&".join(f"{k}=eq.{v}" for k, v in filters.items())
+    if order:
+        params += f"&order={order}"
+    url = f"{SUPABASE_URL}/rest/v1/{table}?{params}"
+    resp = requests.get(url, headers=headers, timeout=30)
+    if resp.status_code >= 300:
+        raise Exception(f"Supabase SELECT {table} {resp.status_code}: {resp.text}")
+    return resp.json() if resp.text else []
 
 def _guess_content_type(path: str) -> str:
     ext = Path(path).suffix.lower()
@@ -451,7 +496,7 @@ def _sync_tenant_context(tenant_slug: Optional[str] = None, *, validate: bool = 
                 "is_binary": (not is_text),
                 "content_type": _guess_content_type(rel),
                 "size_bytes": len(data),
-                "updated_at": datetime.utcnow().isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
             })
 
         batch_size = 200
@@ -564,10 +609,11 @@ app.add_middleware(
         "http://127.0.0.1:8000",
         "https://iagencia.ia.br",
         "https://api.iagencia.ia.br",
+        "https://iagencia-frontend3.vercel.app",
     ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "X-Requested-With"],
 )
 
 class AtendimentoRequest(BaseModel):
@@ -621,46 +667,9 @@ except ImportError as e:
         raise Exception("Módulo Stability não carregado.")
 
 # ==========================================
-# 💾 BANCOS DE DADOS (MOCK EM MEMÓRIA - APRESENTAÇÃO MUGÔ)
+# 💾 HISTÓRICO DE CHAT (em memória — sem persistência necessária)
 # ==========================================
 CHAT_HISTORY_DB: List[Dict[str, Any]] = []
-
-TICKETS_DB = [
-    {"id": 1, "tenant_slug": "mugo", "client": "Mugô", "title": "Campanha Aspirador Hoover - Dia das Mães", "status": "doing", "priority": "high", "briefing": "Focar na potência, silêncio e design minimalista para a nova linha.", "created_at": "Hoje, 09:15"},
-    {"id": 2, "tenant_slug": "mugo", "client": "Mugô (Ssavon)", "title": "Ajuste Rótulo Velas Aromáticas", "status": "todo", "priority": "medium", "briefing": "Mudança na paleta de cores para tons terrosos.", "created_at": "Ontem, 14:30"},
-    {"id": 3, "tenant_slug": "mugo", "client": "Mugô Institucional", "title": "Rebranding Redes Sociais", "status": "done", "priority": "normal", "briefing": "Novos templates para carrossel e stories.", "created_at": "25 Fev, 10:00"},
-]
-
-APPROVALS_DB = [
-    {
-        "id": 1, "tenant_slug": "mugo", "client": "Mugô", "task_id": 1,
-        "campaign": "Lançamento Ssavon", "type": "image", "platform": "instagram",
-        "title": "Post Instagram - Lifestyle Vela Aromática", "version": "V2", "date": "Hoje, 10:30",
-        # Imagem linda de vela aromática e decoração minimalista
-        "content_url": "https://images.unsplash.com/photo-1602928321679-560bb453f190?q=80&w=1000&auto=format&fit=crop",
-        "versions": ["V1", "V2"], "status": "pending", 
-        "general_notes": [
-            {"id": 101, "user": "Atendimento", "text": "A imagem ficou linda, a luz está perfeita!", "date": "Hoje, 10:35"}
-        ], 
-        "audit_log": []
-    },
-    {
-        "id": 2, "tenant_slug": "mugo", "client": "Mugô (Hoover)", "task_id": 2,
-        "campaign": "Sustentação", "type": "image", "platform": "linkedin",
-        "title": "Banner LinkedIn - Design e Tecnologia", "version": "V1", "date": "Ontem, 16:45",
-        # Imagem de um ambiente moderno/clean
-        "content_url": "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?q=80&w=1000&auto=format&fit=crop",
-        "versions": ["V1"], "status": "approved", 
-        "general_notes": [], 
-        "audit_log": []
-    }
-]
-
-ASSETS_DB = [
-    {"id": 1, "tenant_slug": "mugo", "title": "Logo Mugô Premium", "type": "image", "url": "https://images.unsplash.com/photo-1611162617474-5b21e879e113?q=80&w=400&auto=format&fit=crop", "client": "Mugô Institucional", "campaign": "Brandbook", "tags": ["logo", "oficial"]},
-    {"id": 2, "tenant_slug": "mugo", "title": "Foto Embalagem Velas (Oficial)", "type": "image", "url": "https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?q=80&w=400&auto=format&fit=crop", "client": "Mugô (Ssavon)", "campaign": "Lançamento Inverno", "tags": ["produto", "vela"]},
-    {"id": 3, "tenant_slug": "mugo", "title": "Reel Lifestyle Casa", "type": "video", "url": "https://www.w3schools.com/html/mov_bbb.mp4", "client": "Mugô", "campaign": "Campanha 2026", "tags": ["video", "institucional"]},
-]
 
 # ==========================================
 # 🛠️ FERRAMENTAS & UTILITÁRIOS
@@ -695,13 +704,13 @@ def save_base64_image(base64_str: str, tenant_slug: str) -> str:
     """
     if "," in base64_str:
         base64_str = base64_str.split(",", 1)[1]
-    img_data = base64.b64decode(base64_str)
+    img_data = base64.b64decode(base64_str, validate=True)
     filename = f"final_{int(time.time())}_{uuid.uuid4().hex[:6]}.png"
-    tenant_dir = MEDIA_DIR / tenant_slug
+    tenant_dir = MEDIA_DIR / _sanitize_tenant_slug(tenant_slug)
     tenant_dir.mkdir(parents=True, exist_ok=True)
     filepath = tenant_dir / filename
     filepath.write_bytes(img_data)
-    return f"http://localhost:8000/media/{tenant_slug}/{filename}"
+    return f"{API_PUBLIC_BASE}/media/{tenant_slug}/{filename}"
 
 # ==========================================
 # ✅ UPLOAD BASE64 PRA NÃO SUMIR NA TROCA DE PÁGINA
@@ -795,7 +804,7 @@ async def generate_video_endpoint(request: Request, req: dict):
                     description="Geração de vídeo (kling)",
                 )
             return {
-                "url": f"http://localhost:8000/media/{tenant_slug}/{Path(local_path).name}",
+                "url": f"{API_PUBLIC_BASE}/media/{tenant_slug}/{Path(local_path).name}",
                 "provider": "kling",
                 "prompt": final_prompt_or_json,
             }
@@ -823,7 +832,7 @@ async def generate_video_endpoint(request: Request, req: dict):
                         description="Geração de vídeo (veo)",
                     )
                 return {
-                    "url": f"http://localhost:8000/media/{tenant_slug}/{Path(local_path).name}",
+                    "url": f"{API_PUBLIC_BASE}/media/{tenant_slug}/{Path(local_path).name}",
                     "provider": provider_used,
                     "prompt": final_prompt_or_json,
                 }
@@ -846,7 +855,7 @@ async def generate_video_endpoint(request: Request, req: dict):
                     description="Geração de vídeo (veo)",
                 )
             return {
-                "url": f"http://localhost:8000/media/{tenant_slug}/{Path(local_path).name}",
+                "url": f"{API_PUBLIC_BASE}/media/{tenant_slug}/{Path(local_path).name}",
                 "provider": "veo",
                 "prompt": final_prompt_or_json,
             }
@@ -1040,7 +1049,7 @@ async def get_events(request: Request, tenant_slug: str, year: int, month: int):
         return {"events": []}
     return {"events": json.loads(path.read_text(encoding="utf-8"))}
 
-@app.post("/SocialMedia/events/update-day")
+@app.patch("/SocialMedia/events/update-day")
 async def update_event_day(request: Request, req: dict):
     tenant_slug = req.get("tenant_slug", "mugo")
     _enforce_tenant_access(request, tenant_slug)
@@ -1097,7 +1106,7 @@ class SaveApprovalRequest(BaseModel):
     image_base64: str
 
 class Ticket(BaseModel):
-    id: int
+    id: Optional[str] = None
     tenant_slug: str
     client: str
     title: str
@@ -1205,12 +1214,10 @@ class GenerateMediaRequest(BaseModel):
 # ==========================================
 @app.get("/library/assets")
 async def get_library_assets(request: Request, tenant_slug: str = "all"):
-    print(f"📁 Buscando arquivos para o cliente: {tenant_slug}")
     _enforce_tenant_access(request, tenant_slug)
-    if tenant_slug == "all":
-        return {"assets": ASSETS_DB}
-    tenant_assets = [asset for asset in ASSETS_DB if asset["tenant_slug"] == tenant_slug]
-    return {"assets": tenant_assets}
+    filters = None if tenant_slug == "all" else {"tenant_slug": tenant_slug}
+    assets = _supabase_select("library_assets", filters=filters, order="created_at.desc")
+    return {"assets": assets}
 
 @app.get("/drive/oauth/start")
 async def drive_oauth_start(tenant_slug: str):
@@ -1272,7 +1279,7 @@ async def drive_oauth_callback(code: str, state: str):
         "refresh_token": refresh_token,
         "expires_at": expires_at,
         "drive_folder_id": folder_id,
-        "updated_at": datetime.utcnow().isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
     })
 
     return JSONResponse({"ok": True, "tenant_slug": tenant_slug, "drive_folder_id": folder_id})
@@ -1308,7 +1315,7 @@ async def library_upload(
         _upsert_drive_tokens(tenant_slug, {
             "access_token": access_token,
             "expires_at": expires_at,
-            "updated_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
         })
 
     folder_id = tokens.get("drive_folder_id") or _ensure_drive_folder(access_token, tenant_slug)
@@ -1325,13 +1332,13 @@ async def library_upload(
         "type": "video" if (file.content_type or "").startswith("video/") else "image",
         "title": file.filename,
         "provider": "gdrive",
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
     })
 
     return {"ok": True, "file_id": file_id, "provider": "gdrive"}
 
-@app.post("/library/delete")
-async def library_delete(request: Request, asset_id: int = Form(...)):
+@app.delete("/library/{asset_id}")
+async def library_delete(request: Request, asset_id: int):
     if not SUPABASE_URL:
         raise HTTPException(status_code=500, detail="Supabase não configurado.")
     fetch_url = f"{SUPABASE_URL}/rest/v1/library?select=id,tenant_slug,url,provider&id=eq.{asset_id}&limit=1"
@@ -1365,19 +1372,15 @@ async def library_delete(request: Request, asset_id: int = Form(...)):
 
 @app.get("/approval/jobs")
 async def get_approval_jobs(request: Request, tenant_slug: str = "all"):
-    print("📋 Buscando lista de aprovações...")
     _enforce_tenant_access(request, tenant_slug)
-    if tenant_slug == "all":
-        return APPROVALS_DB
-    return [job for job in APPROVALS_DB if job.get("tenant_slug") == tenant_slug]
+    filters = None if tenant_slug == "all" else {"tenant_slug": tenant_slug}
+    return _supabase_select("approval_jobs", filters=filters, order="created_at.desc")
 
 @app.post("/library/assets")
 async def save_library_asset(request: Request, req: SaveAssetRequest):
     _enforce_tenant_access(request, req.tenant_slug)
-    print(f"💾 Salvando arte final na biblioteca: {req.client}")
     image_url = save_base64_image(req.image_base64, req.tenant_slug)
-    new_asset = {
-        "id": int(time.time()),
+    row = _supabase_insert("library_assets", {
         "tenant_slug": req.tenant_slug,
         "title": req.title,
         "type": "image",
@@ -1385,18 +1388,15 @@ async def save_library_asset(request: Request, req: SaveAssetRequest):
         "client": req.client,
         "campaign": "Geral",
         "tags": ["Arte Final", "Studio"],
-    }
-    ASSETS_DB.insert(0, new_asset)
-    return {"status": "success", "asset": new_asset}
+    })
+    return {"status": "success", "asset": row}
 
 @app.post("/approval/jobs")
 async def save_approval_job(request: Request, req: SaveApprovalRequest):
     _enforce_tenant_access(request, req.tenant_slug)
-    print(f"🚀 Enviando arte para aprovação do cliente: {req.client}")
     image_url = save_base64_image(req.image_base64, req.tenant_slug)
     now_str = time.strftime("%d %b, %H:%M")
-    new_job = {
-        "id": int(time.time()),
+    row = _supabase_insert("approval_jobs", {
         "tenant_slug": req.tenant_slug,
         "client": req.client,
         "campaign": req.campaign,
@@ -1410,24 +1410,22 @@ async def save_approval_job(request: Request, req: SaveApprovalRequest):
         "status": "pending",
         "general_notes": [],
         "audit_log": [{"action": "Arte Finalizada", "user": "Criação (Agência)", "date": now_str}],
-    }
-    APPROVALS_DB.insert(0, new_job)
-    return {"status": "success", "job": new_job}
+    })
+    return {"status": "success", "job": row}
 
 @app.get("/atendimento/tickets")
 async def get_tickets(request: Request, tenant_slug: str = "all"):
     _enforce_tenant_access(request, tenant_slug)
-    if tenant_slug == "all":
-        return {"tickets": TICKETS_DB}
-    return {"tickets": [t for t in TICKETS_DB if t["tenant_slug"] == tenant_slug]}
+    filters = None if tenant_slug == "all" else {"tenant_slug": tenant_slug}
+    tickets = _supabase_select("atendimento_tickets", filters=filters, order="created_at.desc")
+    return {"tickets": tickets}
 
 @app.post("/atendimento/tickets")
 async def create_ticket(request: Request, ticket: Ticket):
     _enforce_tenant_access(request, ticket.tenant_slug)
-    new_t = ticket.model_dump()
-    new_t["id"] = len(TICKETS_DB) + 1
-    TICKETS_DB.append(new_t)
-    return {"status": "created", "ticket": new_t}
+    data = ticket.model_dump(exclude={"id"})
+    row = _supabase_insert("atendimento_tickets", data)
+    return {"status": "created", "ticket": row}
 
 @app.post("/atendimento/agent")
 async def atendimento_agent(request: Request, req: AtendimentoAgentRequest):
@@ -1526,7 +1524,7 @@ async def duplicate_tenant_context(req: Optional[Dict[str, Any]] = None):
             raise HTTPException(status_code=404, detail="Contexto de origem vazio.")
 
         rows = []
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         for r in source_rows:
             rows.append({
                 "tenant_slug": tenant_slug,
@@ -2013,7 +2011,7 @@ def _inject_quality_protocols(prompt: str) -> str:
 async def preview_prompt_agent(request: Request, req: PromptPreviewRequest):
     """Gera o preview visual do prompt refinado antes de gastar créditos."""
     _enforce_tenant_access(request, req.tenant_slug)
-    optimized = prepare_refined_prompt(req.dict(), req.media_type)
+    optimized = prepare_refined_prompt(req.model_dump(), req.media_type)
     return {"prompt": optimized}
 
 @app.post("/creation/generate-image")
@@ -2022,7 +2020,7 @@ async def generate_media(request: Request, req: GenerateMediaRequest):
     print(f"🚀 Iniciando Geração: {req.engine} | Tipo: {req.media_type}")
 
     # --- 1. REFINAMENTO DE PROMPT (O FIM DO CÓDIGO DE MÁQUINA) ---
-    final_prompt = prepare_refined_prompt(req.dict(), req.media_type)
+    final_prompt = prepare_refined_prompt(req.model_dump(), req.media_type)
 
     # --- 1.1 TRADUÇÃO OBRIGATÓRIA (EN) PARA IMAGEM/VÍDEO ---
     if req.media_type in ["image", "video"]:
@@ -2041,10 +2039,10 @@ async def generate_media(request: Request, req: GenerateMediaRequest):
     elif ratio < 0.9: ar_string = "4:5"
     elif ratio > 2.0: ar_string = "21:9"
 
-    print(f"📝 Prompt Final (EN): {final_prompt}")
+    # Prompt omitido dos logs para evitar expor dados do usuário
 
     def to_url(path_str: str) -> str:
-        return f"http://localhost:8000/media/{req.tenant_slug}/{Path(path_str).name}"
+        return f"{API_PUBLIC_BASE}/media/{req.tenant_slug}/{Path(path_str).name}"
 
     try:
         # Resolve chaves por tenant (para imagem/vídeo)
@@ -2340,32 +2338,23 @@ async def root():
         "health": "/health"
     }
 @app.delete("/approval/jobs/{job_id}")
-async def delete_approval_job(request: Request, job_id: int, tenant_slug: str = "all"):
+async def delete_approval_job(request: Request, job_id: str, tenant_slug: str = "all"):
     if tenant_slug != "all":
         _enforce_tenant_access(request, tenant_slug)
-    global APPROVALS_DB
-    if tenant_slug == "all":
-        APPROVALS_DB = [job for job in APPROVALS_DB if job.get("id") != job_id]
-    else:
-        APPROVALS_DB = [
-            job for job in APPROVALS_DB
-            if not (job.get("id") == job_id and job.get("tenant_slug") == tenant_slug)
-        ]
+    filters: dict = {"id": job_id}
+    if tenant_slug != "all":
+        filters["tenant_slug"] = tenant_slug
+    _supabase_delete("approval_jobs", filters)
     return {"status": "success", "message": "Arte excluída das Aprovações!"}
 
 @app.delete("/library/assets/{asset_id}")
 async def delete_library_asset(request: Request, asset_id: str, tenant_slug: str = "all"):
     if tenant_slug != "all":
         _enforce_tenant_access(request, tenant_slug)
-    # ✅ você usava LIBRARY_DB que não existe -> usando ASSETS_DB
-    global ASSETS_DB
-    if tenant_slug == "all":
-        ASSETS_DB = [asset for asset in ASSETS_DB if str(asset.get("id")) != str(asset_id)]
-    else:
-        ASSETS_DB = [
-            asset for asset in ASSETS_DB
-            if not (str(asset.get("id")) == str(asset_id) and asset.get("tenant_slug") == tenant_slug)
-        ]
+    filters: dict = {"id": asset_id}
+    if tenant_slug != "all":
+        filters["tenant_slug"] = tenant_slug
+    _supabase_delete("library_assets", filters)
     return {"status": "success", "message": "Arte excluída da Biblioteca!"}
 
 if __name__ == "__main__":

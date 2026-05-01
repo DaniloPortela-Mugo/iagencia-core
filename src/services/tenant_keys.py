@@ -13,7 +13,6 @@ def _clean_key(value: Optional[str]) -> Optional[str]:
         key = key[1:-1].strip()
     return key or None
 
-
 def _supabase_headers() -> Optional[dict]:
     url = os.getenv("SUPABASE_URL")
     key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")

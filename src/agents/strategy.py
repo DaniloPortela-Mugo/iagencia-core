@@ -1,38 +1,32 @@
 import json
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_openai import ChatOpenAI
+from src.core.state import CampaignState # <--- Importação necessária
 
-llm = ChatOpenAI(model="gpt-4o", temperature=0.6)
+llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5)
 
-# --- FUNÇÃO PARA O DASHBOARD (PLANNING.TSX) ---
-def analyze_competitors_radar(brand_context: str):
+def strategist_node(state: CampaignState):
     """
-    Gera uma análise simulada de concorrentes para o widget 'Radar'.
+    Agente de Planejamento: Cria o Brief Estratégico.
     """
+    print("--- [NODE] Strategist ---")
+    
+    req = state.request
+    
     prompt = f"""
-    Atue como Estrategista de Marca. Analise o contexto da marca abaixo e simule o que 3 concorrentes genéricos (ou reais se citados) estariam fazendo de relevante nas redes sociais agora.
-
-    CONTEXTO DA MARCA:
-    {brand_context}
-
-    Retorne APENAS um JSON estrito com esta lista:
-    [
-        {{ "name": "Nome Concorrente", "post": "Descrição curta do post destaque deles (ex: Reels sobre X)", "likes": "1.2K", "comments": "45" }},
-        ... (total 3 itens)
-    ]
+    Atue como Planejamento Estratégico.
+    Campanha: {req.campaign_name}
+    Tarefa: {req.task_name}
+    Descrição: {req.description}
+    
+    Gere um Briefing curto (JSON):
+    {{ "key_message": "...", "target_audience": "...", "tone": "..." }}
     """
     
     try:
         response = llm.invoke([HumanMessage(content=prompt)])
-        content = response.content.replace('```json', '').replace('```', '').strip()
-        return json.loads(content)
-    except Exception as e:
-        print(f"Erro em Radar: {e}")
-        return [
-            { "name": "Concorrente A", "post": "Análise de Mercado", "likes": "N/A", "comments": "0" }
-        ]
-
-# --- FUNÇÃO DO FLUXO DE CAMPANHA (MANTIDA) ---
-def strategist_node(state):
-    # ... (seu código original) ...
-    pass
+        strategy = json.loads(response.content)
+    except:
+        strategy = {"key_message": req.description, "tone": "Standard"}
+        
+    return {"strategy_brief": strategy}

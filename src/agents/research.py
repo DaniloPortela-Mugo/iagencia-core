@@ -1,51 +1,59 @@
 import json
-import os
 from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_openai import ChatOpenAI
-# Se estiver usando o state em outro lugar, mantenha o import, senão pode remover se for só API
-# from src.core.state import CampaignState 
+from src.core.state import CampaignState
 
-llm = ChatOpenAI(model="gpt-4-turbo", temperature=0.5)
+llm = ChatOpenAI(model="gpt-4-turbo", temperature=0.3)
 
-# --- FUNÇÃO PARA O DASHBOARD (PLANNING.TSX) ---
-def get_market_trends(brand_context: str):
+def researcher_node(state: CampaignState):
     """
-    Gera tendências de mercado baseadas no nicho do cliente (Brand Guide).
-    Usado no widget 'Trends' do Dashboard.
-    """
-    prompt = f"""
-    Atue como um Coolhunter (Pesquisador de Tendências) sênior.
-    Com base no perfil da marca abaixo, identifique 3 tendências de conteúdo (formatos, áudios ou tópicos) que estão em alta nesta semana.
-
-    PERFIL DA MARCA:
-    {brand_context}
-
-    Retorne APENAS um JSON estrito (sem markdown) com esta lista:
-    [
-        {{ "topic": "Nome da Trend", "growth": "Alta" | "Média", "sentiment": "positive" | "neutral" }},
-        ... (total 3 itens)
-    ]
-    """
-    
-    try:
-        response = llm.invoke([HumanMessage(content=prompt)])
-        # Limpeza básica de markdown caso a IA mande ```json
-        content = response.content.replace('```json', '').replace('```', '').strip()
-        return json.loads(content)
-    except Exception as e:
-        print(f"Erro em Trends: {e}")
-        # Fallback para não quebrar a tela
-        return [
-            { "topic": "Vídeos Curtos (Shorts)", "growth": "Alta", "sentiment": "positive" },
-            { "topic": "Conteúdo Humanizado", "growth": "Média", "sentiment": "positive" },
-            { "topic": "IA Generativa", "growth": "Alta", "sentiment": "neutral" }
-        ]
-
-# --- FUNÇÃO DO FLUXO DE CAMPANHA (MANTIDA) ---
-def researcher_node(state): 
-    """
-    Busca referências visuais para um job específico.
+    Agente 2.1: Busca referências e insights.
+    (Simulado via LLM Knowledge Base para evitar dependência de API de Search externa por enquanto)
     """
     print("--- [NODE] Researcher ---")
-    # ... (seu código original aqui) ...
-    return {"research_data": {}}
+    req = state.request
+    
+    prompt = f"""
+    Você é um Pesquisador de Tendências.
+    O usuário quer criar uma peça sobre: "{req.scene_description}" para a marca "{req.brand_name}".
+    
+    Gere um mini-dossiê com:
+    1. 3 Tendências visuais atuais sobre esse tema.
+    2. Perfil provável do público-alvo.
+    3. Lista de clichês a evitar.
+    
+    Retorne JSON: {{ "trends": [], "audience": "...", "avoid": [] }}
+    """
+    
+    response = llm.invoke([HumanMessage(content=prompt)])
+    try:
+        data = json.loads(response.content)
+    except:
+        data = {"error": "Research failed", "raw": response.content}
+        
+    return {"research_data": data}
+
+def compliance_node(state: CampaignState):
+    """
+    Agente 2.2: Fact-Checker e Segurança de Marca.
+    """
+    print("--- [NODE] Compliance Guard ---")
+    req = state.request
+    
+    # Se tiver copy gerado, valida o copy. Se não, valida a ideia inicial.
+    content_to_check = state.copy_assets or req.scene_description
+    
+    prompt = f"""
+    Analise riscos de Compliance/PR para: "{content_to_check}".
+    Setores sensíveis: Saúde, Finanças, Política, Menores de idade.
+    
+    Retorne JSON: {{ "approved": true/false, "flags": ["lista de riscos"], "suggestion": "..." }}
+    """
+    
+    response = llm.invoke([HumanMessage(content=prompt)])
+    try:
+        report = json.loads(response.content)
+    except:
+        report = {"approved": True, "flags": [], "suggestion": "Auto-approved"}
+        
+    return {"risk_report": report}

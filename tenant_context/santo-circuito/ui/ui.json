@@ -1,0 +1,13 @@
+{
+  "primary_button": "Enviar para Aprovação",
+  "status_labels": {
+    "draft": "Início da Peregrinação",
+    "review": "Aferição do Mestre",
+    "approved": "Aprovado para a Glória"
+  },
+  "sections": {
+    "briefing": "O Chamado das Águas",
+    "image_gen": "Estúdio de Imagem Sagrada",
+    "copy_gen": "Escriba da Redação"
+  }
+}
