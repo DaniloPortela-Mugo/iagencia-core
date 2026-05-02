@@ -7,3 +7,11 @@ pydantic
 python-dotenv
 python-multipart
 requests
+supabase
+replicate
+elevenlabs
+google-generativeai
+google-cloud-storage
+python-pptx
+deep-translator
+cryptography
